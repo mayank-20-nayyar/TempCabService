@@ -13,6 +13,9 @@
                 android:left="5dp"
                 android:right="5dp"
                 android:top="2dp" />
+            <margin
+                android:bottom = "2dp"
+                android:top = "2dp" />
 
             <corners android:radius="8dp" />
         </shape>

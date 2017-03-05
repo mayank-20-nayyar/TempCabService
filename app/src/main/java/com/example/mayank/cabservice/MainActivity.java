@@ -24,27 +24,19 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
 
-    Button call;
-    Button alarm;
-    Button music;
-    Button tableData;
-    Map<String,String> contacts = new HashMap<String,String>();
+
     String receivedMessage = "";
-    String toCall = "";
-    String toPlay = "";
-    public String toSearchTable = "";
-    String displayMenu = "";
-    EditText ed;
-    EditText playSong;
-
-    private static final String TAG = "ChatActivity";
-
     private ChatArrayAdapter chatArrayAdapter;
-    private ListView listView;
     private EditText chatText;
     private Button buttonSend;
     private boolean side = false;
-    public String[] st = {"weather","book"};
+    public String[] st = {"weather","book ride"};
+    private CardArrayAdapter cardArrayAdapter;
+    private ListView listView;
+    public int flag;
+    public String dropLocation;
+    public String pickUpLocation;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,8 +47,12 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
 
         listView = (ListView) findViewById(R.id.msgview);
 
+
+
         chatArrayAdapter = new ChatArrayAdapter(getApplicationContext(), R.layout.righht);
         listView.setAdapter(chatArrayAdapter);
+
+        sendBotMessage("Enter the drop location");
 
         chatText = (EditText) findViewById(R.id.msg);
         chatText.setOnKeyListener(new View.OnKeyListener() {
@@ -96,6 +92,28 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
 
     void decodeMessage(String message)
     {
+
+        if(flag == 0) {
+            dropLocation = message;
+            sendBotMessage("Enter Pickup Location");
+            flag++;
+        }
+        else if(flag == 1){
+            pickUpLocation = message;
+            sendBotMessage("Your Booking Id is: 124sgh334.");
+            sendBotMessage("The drop location is: " + dropLocation + ".");
+            sendBotMessage("The pickup location is: " + pickUpLocation + ".");
+            sendBotMessage("Thanks for booking through us.");
+            sendBotMessage("Press 1 to make a new booking.");
+            flag++;
+        }
+
+        if(message.equals("1"))
+        {
+            sendBotMessage("Enter the Drop Location");
+            flag = 0;
+        }
+
         if(message.contains("add button"))
         {
             for(int i=0;i<2 ; i++)
@@ -105,31 +123,29 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
             showDate();
         if(message.contains("time"))
             showTime();
+        /*if(message.contains("card"))
+            showCard();
+*/
     }
 
-    void showTime()
+    /*void showCard()
     {
-        Calendar now = Calendar.getInstance();
-        TimePickerDialog tpd = TimePickerDialog.newInstance(
-                MainActivity.this,
-                now.get(Calendar.HOUR_OF_DAY),
-                now.get(Calendar.MINUTE),
-                false
-                );
-        tpd.show(getFragmentManager(), "Timepickerdialog");
+        listView = (ListView) findViewById(R.id.card_listView);
+
+        listView.addHeaderView(new View(this));
+        listView.addFooterView(new View(this));
+
+        cardArrayAdapter = new CardArrayAdapter(getApplicationContext(), R.layout.list_item_card);
+
+        for (int i = 0; i < 3; i++) {
+            Card card = new Card("Card " + (i+1) + " Line 1", "Card " + (i+1) + " Line 2");
+            cardArrayAdapter.add(card);
+        }
+        listView.setAdapter(cardArrayAdapter);
 
     }
+*/
 
-    void showDate(){
-        Calendar now = Calendar.getInstance();
-        DatePickerDialog dpd = DatePickerDialog.newInstance(
-                MainActivity.this,
-                now.get(Calendar.YEAR),
-                now.get(Calendar.MONTH),
-                now.get(Calendar.DAY_OF_MONTH)
-        );
-        dpd.show(getFragmentManager(), "Datepickerdialog");
-    }
 
     void showButton(String user, int id)
     {
@@ -153,6 +169,30 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
             }
         });
 
+    }
+
+    void showTime()
+    {
+        Calendar now = Calendar.getInstance();
+        TimePickerDialog tpd = TimePickerDialog.newInstance(
+                MainActivity.this,
+                now.get(Calendar.HOUR_OF_DAY),
+                now.get(Calendar.MINUTE),
+                false
+        );
+        tpd.show(getFragmentManager(), "Timepickerdialog");
+
+    }
+
+    void showDate(){
+        Calendar now = Calendar.getInstance();
+        DatePickerDialog dpd = DatePickerDialog.newInstance(
+                MainActivity.this,
+                now.get(Calendar.YEAR),
+                now.get(Calendar.MONTH),
+                now.get(Calendar.DAY_OF_MONTH)
+        );
+        dpd.show(getFragmentManager(), "Datepickerdialog");
     }
 
 
