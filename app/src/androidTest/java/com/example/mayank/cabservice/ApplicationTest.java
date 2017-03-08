@@ -1,6 +1,7 @@
 package com.example.mayank.cabservice;
 
 import android.app.Application;
+import android.support.multidex.MultiDex;
 import android.test.ApplicationTestCase;
 
 /**
@@ -10,4 +11,5 @@ public class ApplicationTest extends ApplicationTestCase<Application> {
     public ApplicationTest() {
         super(Application.class);
     }
+
 }
