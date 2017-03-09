@@ -48,7 +48,7 @@ import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 */
 
-public class MainActivity extends AppCompatActivity implements DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
+public class MainActivity extends AppCompatActivity implements Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
 
 
     String receivedMessage = "";
@@ -93,7 +93,9 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
         chatArrayAdapter = new ChatArrayAdapter(getApplicationContext(), R.layout.righht);
         listView.setAdapter(chatArrayAdapter);
 
-        sendBotMessage("Enter the Drop location");
+        sendBotMessage("I am Vihik Bot.");
+        sendBotMessage("In order to chat with drivers you \\n will need to create a trip. \\n I will help with trip creation.");
+        sendBotMessage("Please provide your drop location ?");
 
         chatText = (EditText) findViewById(R.id.msg);
         chatText.setOnKeyListener(new View.OnKeyListener() {
@@ -139,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
 
             if(tempDropArray.length < 3) {
                 dropLocation = tempDroplocation;
-                sendBotMessage("Enter Pickup Location");
+                sendBotMessage("We detected <current location> as pickup location. \\n Do you want to use this as pickup location ? \\n Say yes or write any other location");
                 flag++;
             }
             else{
@@ -148,14 +150,16 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
             }
         }
         else if(flag == 1){
-            String tempPickUpLocation = extractLocation(message,flag);
-            String[] tempPickUpArray = tempPickUpLocation.split("\\s");
+            String tempPickUpLocation;
+            String[] tempPickUpArray;
+            if(message.equals("Yes") || message.equals("yes") || message.equals("YES")) {
+                tempPickUpLocation = "current location";
+                tempPickUpArray = tempPickUpLocation.split("\\s");
 
-            if(tempPickUpArray.length < 2)
-            {
                 pickUpLocation = tempPickUpLocation;
+                sendBotMessage("Trip Id is being generated. Thanks for your patience.");
                 sendJson(dropLocation,pickUpLocation);
-
+                while(UserId == null);
                 sendBotMessage("The drop location is: " + dropLocation + ".");
                 sendBotMessage("The pick up location is: " + pickUpLocation + ".");
                 sendBotMessage("The Id is: " + UserId + ".");
@@ -164,10 +168,32 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
                 flag ++;
 
             }
-            else{
-                flag = 1;
-                sendBotMessage(tempPickUpLocation);
+            else {
+                tempPickUpLocation = extractLocation(message, flag);
+
+                tempPickUpArray = tempPickUpLocation.split("\\s");
+
+                if(tempPickUpArray.length < 2)
+                {
+                    pickUpLocation = tempPickUpLocation;
+                    sendBotMessage("Trip Id is being generated. Thanks for your patience.");
+                    sendJson(dropLocation,pickUpLocation);
+                    while(UserId == null);
+                    sendBotMessage("The drop location is: " + dropLocation + ".");
+                    sendBotMessage("The pick up location is: " + pickUpLocation + ".");
+                    sendBotMessage("The Id is: " + UserId + ".");
+                    sendBotMessage("Thanks for booking through us.");
+                    sendBotMessage("Press 1 to make a new booking");
+                    flag ++;
+
+                }
+                else{
+                    flag = 1;
+                    sendBotMessage(tempPickUpLocation);
+                }
             }
+
+
         }
         if(message.equals("1"))
         {
@@ -193,18 +219,20 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
     String extractLocation(String mes, int flag)
     {
         String posTaggedMes = postagger(mes);
-        String[] posArray = posTaggedMes.trim().split("\\s+");
+        String[] posArray;
         String[] innerArray;
         Log.e("tagged", posTaggedMes);
-        if(posArray.length == 1)
+        Log.e("res", !mes.contains(" ") + "");
+        if(!mes.contains(" "))
         {
-            innerArray = posArray[0].split("/");
-            if(innerArray[1].equals("NN"))
+            innerArray = posTaggedMes.split("/");
+            if(innerArray[1].equals("NN") || innerArray[1].equals("NNP") || innerArray[1].equals("NNS"))
                 return innerArray[0];
             else
                 return "This is not the proper destination location. Please enter correct destination.";
         }
         else {
+                posArray = posTaggedMes.trim().split("\\s+");
                 for (int i = 0; i < posArray.length; i++) {
                     innerArray = posArray[i].split("/");
                     Log.e("here", innerArray[0] + innerArray[1] + flag + "");
@@ -276,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
     void sendJson(final String dLocation, final String picLocation)
     {
         String[] net = {dLocation,picLocation};
-        new Network().execute(net);
+        new Network(this).execute(net);
 
     }
 
@@ -374,11 +402,27 @@ public class MainActivity extends AppCompatActivity implements DatePickerDialog.
     public void onTimeSet(TimePickerDialog view, int hourOfDay, int minute, int second) {
 
     }
+
+    @Override
+    public void process(String output) {
+        UserId = output;
+    }
 }
 
 class Network extends AsyncTask<String[],Void,String[]>
 {
+
+
+    public interface TranferResult {
+        void process(String output);
+    }
+    public  TranferResult tf = null;
     MainActivity ma;
+
+    public Network(TranferResult tf)
+    {
+        this.tf = tf;
+    }
     @Override
     protected String[] doInBackground(String[]... params) {
         String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
@@ -430,6 +474,13 @@ class Network extends AsyncTask<String[],Void,String[]>
                 String result = EntityUtils.toString(response.getEntity()); //Get the data in the entity
                 Log.e("the result",result);
                 JSONObject jsonObject = new JSONObject(result);
+                if(jsonObject.getString("success").equals("true")) {
+                    JSONObject data = jsonObject.getJSONObject("data");
+                    Log.e("data ", data.getString("t_id"));
+                    tf.process(data.getString("t_id"));
+                }
+
+
             }
 
         } catch(Exception e) {
