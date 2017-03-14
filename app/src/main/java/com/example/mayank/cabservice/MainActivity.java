@@ -1,9 +1,18 @@
 package com.example.mayank.cabservice;
 
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.database.DataSetObserver;
 import android.graphics.drawable.Drawable;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.Address;
+import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Looper;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.os.Handler;
@@ -17,6 +26,16 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
+import android.location.Location;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.*;
 
 import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
 import com.wdullaer.materialdatetimepicker.time.TimePickerDialog;
@@ -45,6 +64,8 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -57,7 +78,7 @@ import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 */
 
-public class MainActivity extends AppCompatActivity implements Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
+public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
 
 
     String receivedMessage = "";
@@ -65,7 +86,7 @@ public class MainActivity extends AppCompatActivity implements Network.TranferRe
     private EditText chatText;
     private Button buttonSend;
     private boolean side = false;
-    public String[] st = {"weather","book ride"};
+    public String[] st = {"weather", "book ride"};
     private CardArrayAdapter cardArrayAdapter;
     private ListView listView;
     public int flag;
@@ -76,7 +97,28 @@ public class MainActivity extends AppCompatActivity implements Network.TranferRe
     MaxentTagger tagger = null;
     public boolean dropLocationFlag = false;
     public boolean pickUpLocationFlag = false;
+    public boolean UserIdFlag = false;
+    public boolean userPlaceDropFlag = false;
+    public boolean userPlacePickUpFlag = false;
 
+    private static final String TAG = MainActivity.class.getSimpleName();
+
+    private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 1000;
+
+    private Location mLastLocation;
+
+    // Google client to interact with Google API
+    private GoogleApiClient mGoogleApiClient;
+
+    // boolean flag to toggle periodic location updates
+    private boolean mRequestingLocationUpdates = false;
+
+    private LocationRequest mLocationRequest;
+
+    // Location updates intervals in sec
+    private static int UPDATE_INTERVAL = 10000; // 10 sec
+    private static int FATEST_INTERVAL = 5000; // 5 sec
+    private static int DISPLACEMENT = 10; // 10 meters
 
 
     @Override
@@ -93,20 +135,28 @@ public class MainActivity extends AppCompatActivity implements Network.TranferRe
             tagger = new MaxentTagger(
                     "taggers/left3words-wsj-0-18.tagger");
         } catch (IOException e) {
-            Log.e("taggger",e + "");
+            Log.e("taggger", e + "");
             e.printStackTrace();
         } catch (ClassNotFoundException e) {
             Log.e("clas", "not found");
             e.printStackTrace();
         }
-        Log.e("done with tagging","yo");
+        Log.e("done with tagging", "yo");
 
+
+        if (checkPlayServices()) {
+
+            // Building the GoogleApi client
+            buildGoogleApiClient();
+        }
+
+        displayLocation();
 
         chatArrayAdapter = new ChatArrayAdapter(getApplicationContext(), R.layout.righht);
         listView.setAdapter(chatArrayAdapter);
 
         sendBotMessage("I am Vihik Bot.");
-        sendBotMessage("In order to chat with drivers you \\n will need to create a trip. \\n I will help with trip creation.");
+        sendBotMessage("In order to chat with drivers you \n will need to create a trip. \n I will help with trip creation.");
         sendBotMessage("Please provide your drop location ?");
 
         chatText = (EditText) findViewById(R.id.msg);
@@ -121,11 +171,11 @@ public class MainActivity extends AppCompatActivity implements Network.TranferRe
         buttonSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View arg0) {
-                Log.e("above","chat");
+                Log.e("above", "chat");
                 receivedMessage = chatText.getText().toString();
                 sendChatMessage(receivedMessage);
-                Log.e("below","chat");
-                Log.e("the",receivedMessage);
+                Log.e("below", "chat");
+                Log.e("the", receivedMessage);
                 decodeMessage(receivedMessage);
             }
         });
@@ -144,10 +194,86 @@ public class MainActivity extends AppCompatActivity implements Network.TranferRe
 
     }
 
+     String displayLocation() {
+
+        String currentAddress = "";
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return "Please enable google play services";
+        }
+        mLastLocation = LocationServices.FusedLocationApi
+                .getLastLocation(mGoogleApiClient);
+
+        if (mLastLocation != null) {
+            double latitude = mLastLocation.getLatitude();
+            double longitude = mLastLocation.getLongitude();
+
+            Log.e("the location", latitude + " " + longitude + " " );
+            currentAddress = convertToAddress(latitude, longitude);
+
+        } else {
+            Log.e("the location", "not possible");
+            }
+        return currentAddress;
+    }
+
+    String convertToAddress(double latitude, double longitude){
+        Geocoder geocoder;
+        List<Address> addresses;
+        geocoder = new Geocoder(this, Locale.getDefault());
+
+        try {
+            addresses = geocoder.getFromLocation(latitude, longitude, 1);
+            String address = addresses.get(0).getAddressLine(0); // If any additional address line present than only, check with max available address lines by getMaxAddressLineIndex()
+            String city = addresses.get(0).getLocality();
+            String state = addresses.get(0).getAdminArea();
+            String country = addresses.get(0).getCountryName();
+            String postalCode = addresses.get(0).getPostalCode();
+            String knownName = addresses.get(0).getFeatureName();
+            Log.e("the add",address + city + state + country + postalCode + knownName);
+            return address + " " + city + " " + state + " " + country + " " + postalCode + " " + knownName;// Here 1 represent max location result to returned, by documents it recommended 1 to 5
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "some issue with finding the current location";
+    }
+
+    protected synchronized void buildGoogleApiClient() {
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API).build();
+    }
+
+    /**
+     * Method to verify google play services on the device
+     * */
+    private boolean checkPlayServices() {
+        int resultCode = GooglePlayServicesUtil
+                .isGooglePlayServicesAvailable(this);
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
+                GooglePlayServicesUtil.getErrorDialog(resultCode, this,
+                        PLAY_SERVICES_RESOLUTION_REQUEST).show();
+            } else {
+                Toast.makeText(getApplicationContext(),
+                        "This device is not supported.", Toast.LENGTH_LONG)
+                        .show();
+                finish();
+            }
+            return false;
+        }
+        return true;
+    }
 
     void decodeMessage(String message)
     {
-        int check = 0;
         if(flag == 0) {
             String tempDroplocation = extractLocation(message,flag);
             String[] tempDropArray = tempDroplocation.split("\\s");
@@ -160,12 +286,18 @@ public class MainActivity extends AppCompatActivity implements Network.TranferRe
                 handler.postDelayed(new Runnable() {
                     public void run() {
                         Log.e("DLF",dropLocationFlag + "");
-                        if(dropLocationFlag) {
-                            sendBotMessage("We detected <current location> as pickup location. \n Do you want to use this as pickup location ? \n Say yes or write any other location");
+                        if(dropLocationFlag && userPlaceDropFlag) {
+                            sendBotMessage("Detecting your current location.");
+                            String currentLocation = displayLocation();
+                            sendBotMessage("Drop location verified. \n We detected \n" + currentLocation +  "\n as pickup location. \n Do you want to use this as pickup location ? \n Say yes or write any other location");
                             flag++;
                         }
-                        else {
+                        else if (dropLocationFlag == true && userPlaceDropFlag == false){
                             flag = 0;
+                            sendBotMessage("The Vihik cab service is limited to Hyderabad as of now. We request you to enter drop location in Hyderabad itself");
+                        }
+                        else
+                        {   flag = 0;
                             sendBotMessage("We were unable to verify your drop location. Please follow the template or you maybe on slow internet connection");
                         }
                     }
@@ -207,16 +339,34 @@ public class MainActivity extends AppCompatActivity implements Network.TranferRe
                     handler.postDelayed(new Runnable() {
                         public void run() {
                             Log.e("PLF",pickUpLocationFlag + "");
-                            if(pickUpLocationFlag) {
+                            if(pickUpLocationFlag && userPlacePickUpFlag) {
                                 sendBotMessage("Trip Id is being generated. Thanks for your patience.");
-                                //sendJson(dropLocation, pickUpLocation);
+                                sendJson(dropLocation, pickUpLocation);
 
-                                sendBotMessage("The drop location is: " + dropLocation + ".");
-                                sendBotMessage("The pick up location is: " + pickUpLocation + ".");
-                                sendBotMessage("The Id is: " + UserId + ".");
-                                sendBotMessage("Thanks for booking through us.");
-                                sendBotMessage("Press 1 to make a new booking");
-                                flag++;
+                                Handler handle = new Handler();
+                                handle.postDelayed(new Runnable() {
+                                    public void run() {
+                                        if(UserIdFlag == true) {
+                                            sendBotMessage("The drop location is: " + dropLocation + ".");
+                                            sendBotMessage("The pick up location is: " + pickUpLocation + ".");
+                                            sendBotMessage("The Id is: " + UserId + ".");
+                                            sendBotMessage("Thanks for booking through us.");
+                                            sendBotMessage("Press 1 to make a new booking");
+                                            flag++;
+                                        }
+                                        else
+                                        {
+                                            flag = 0;
+                                            sendBotMessage("Some technical issue. Please try again after sometime");
+                                        }
+                                    }
+                                }, 6000);
+
+
+                            }
+                            else if (pickUpLocationFlag == true && userPlacePickUpFlag == false){
+                                flag = 1;
+                                sendBotMessage("The Vihik cab service is limited to Hyderabad as of now. We request you to enter pick up location in Hyderabad itself");
                             }
                             else {
                                 flag = 1;
@@ -360,7 +510,7 @@ public class MainActivity extends AppCompatActivity implements Network.TranferRe
             e.printStackTrace();
         }
         SentenceDetectorME sdetector = new SentenceDetectorME(model);
-
+/
         String sentences[] = sdetector.sentDetect(paragraph);
 
         Log.e("one",sentences[0]);
@@ -476,23 +626,69 @@ public class MainActivity extends AppCompatActivity implements Network.TranferRe
 
     @Override
     public void process(String output) {
-        UserId = output;
+        if(!output.equals("Some technical issue. Please try after sometime")) {
+            UserIdFlag = true;
+            UserId = output;
+        }
+        else
+            UserIdFlag = false;
     }
-    public void statusSearch(String status)
+    public void statusSearch(String status,boolean placeFlag )
     {
-        if(status.equals("OK") && flag == 0)
+        Log.e("SS", placeFlag + "");
+        if(status.equals("OK") && flag == 0 ) {
             dropLocationFlag = true;
-        if(status.equals("OK") && flag == 1)
+            if(placeFlag == true)
+                userPlaceDropFlag = true;
+        }
+        if(status.equals("OK") && flag == 1 ) {
             pickUpLocationFlag = true;
+            if(placeFlag == true)
+                userPlacePickUpFlag = true;
+        }
 
     }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        displayLocation();
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+            mGoogleApiClient.connect();
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.e("connection failed", "connection failed");
+    }
+
+    @Override
+    protected void onStart(){
+    super.onStart();
+    if (mGoogleApiClient != null) {
+        mGoogleApiClient.connect();
+        }
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        checkPlayServices();
+    }
+
 }
 
 class Network extends AsyncTask<String[],Void,String[]>
 {
     public interface TranferResult {
         void process(String output);
-        void statusSearch(String status);
+        void statusSearch(String status, boolean placeFlag);
     }
     public  TranferResult tf = null;
 
@@ -561,6 +757,8 @@ class Network extends AsyncTask<String[],Void,String[]>
                         Log.e("data ", data.getString("t_id"));
                         tf.process(data.getString("t_id"));
                     }
+                    else
+                        tf.process("Some technical issue. Please try after sometime");
 
 
                 }
@@ -585,15 +783,19 @@ class Network extends AsyncTask<String[],Void,String[]>
                     Log.e("the result", result);
                     JSONObject jsonObject = new JSONObject(result);
                     String status = jsonObject.getString("status");
+                    boolean placeFlag = false;
                     Log.e("status", status);
-                    tf.statusSearch(status);
-                    /*JSONArray jsonArray = jsonObject.getJSONArray("results");
+
+                    JSONArray jsonArray = jsonObject.getJSONArray("results");
 
                     for(int i = 0;i<jsonArray.length(); i++)
                     {
                         JSONObject jsonObject1 = jsonArray.getJSONObject(i);
-                        Log.e("the name", jsonObject1.getString("name"));
-                    }*/
+                        Log.e("the name", jsonObject1.getString("formatted_address"));
+                        if(jsonObject1.getString("formatted_address").contains("Hyderabad"))
+                            placeFlag = true;
+                    }
+                    tf.statusSearch(status, placeFlag);
 
                 }
 

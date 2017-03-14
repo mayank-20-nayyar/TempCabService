@@ -11,10 +11,11 @@ android {
         targetSdkVersion 25
         versionCode 1
         versionName "1.0"
+        multiDexEnabled true
         /*jackOptions {
             enabled true
         }
-        //multiDexEnabled true
+        multiDexEnabled true
     }
     dexOptions {
         incremental true
@@ -49,4 +50,5 @@ android {
 }
 dependencies {
     compile files('libs/stanford-postagger.jar')
+    compile 'com.google.android.gms:play-services:7.5.0'
 }
