@@ -12,12 +12,16 @@ import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 class ChatArrayAdapter extends ArrayAdapter<ChatMessage> {
 
     private TextView chatText;
+    private TextView timeStamp;
     private List<ChatMessage> chatMessageList = new ArrayList<ChatMessage>();
     private Context context;
 
@@ -44,13 +48,21 @@ class ChatArrayAdapter extends ArrayAdapter<ChatMessage> {
         ChatMessage chatMessageObj = getItem(position);
         View row = convertView;
         LayoutInflater inflater = (LayoutInflater) this.getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        DateFormat df = new SimpleDateFormat("HH:mm");
+        Calendar calobj = Calendar.getInstance();
+        String time_stamp = df.format(calobj.getTime());
+
         if (chatMessageObj.left) {
             row = inflater.inflate(R.layout.left, parent, false);
         }else{
             row = inflater.inflate(R.layout.righht, parent, false);
         }
         chatText = (TextView) row.findViewById(R.id.msgr);
+        timeStamp = (TextView)row.findViewById(R.id.time_stamp);
+
         chatText.setText(chatMessageObj.message);
+        timeStamp.setText(time_stamp);
+
         return row;
     }
 }

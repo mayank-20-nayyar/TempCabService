@@ -1,20 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/msgr"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="left"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/bot"/>
+
+        <TextView
+            android:id="@+id/msgr"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="left"
+            android:layout_marginBottom="4dp"
+            android:layout_marginRight="20dp"
+            android:layout_marginLeft="4dp"
+            android:background="@drawable/text_view_left"
+            android:paddingBottom="8dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="5dp"
+            android:text="Sampleleft"
+            android:textColor="#000"
+            android:fontFamily="sans-serif"/>
+
+
+    </LinearLayout>
+
+
+
+    <TextView
+        android:id="@+id/time_stamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-        android:layout_marginRight="20dp"
-        android:background="@drawable/text_view_left"
-        android:paddingBottom="8dp"
-        android:paddingLeft="10dp"
-        android:paddingRight="10dp"
-        android:paddingTop="5dp"
-        android:text="Sampleleft"
-        android:textColor="#000" />
-</RelativeLayout>
+        android:layout_marginLeft="26dp"
+        android:gravity="left" />
+</LinearLayout>

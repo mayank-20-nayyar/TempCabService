@@ -1,6 +1,8 @@
 package com.example.mayank.cabservice;
 
+import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.DataSetObserver;
 import android.graphics.drawable.Drawable;
@@ -10,6 +12,7 @@ import android.location.Address;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Looper;
+import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -22,6 +25,7 @@ import android.view.View;
 import android.widget.AbsListView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
@@ -61,6 +65,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -78,60 +83,46 @@ import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 */
 
-public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
+public class MainActivity extends AppCompatActivity implements StanfordThread.MaxentTaggerAsync,GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
 
 
-    String receivedMessage = "";
+
     private ChatArrayAdapter chatArrayAdapter;
     private EditText chatText;
-    private Button buttonSend;
+    private ImageButton buttonSend;
     private boolean side = false;
     public String[] st = {"weather", "book ride"};
     private CardArrayAdapter cardArrayAdapter;
     private ListView listView;
     public int flag;
+    String receivedMessage = "";
     public String dropLocation;
     public String pickUpLocation;
-    public int count = 0;
     public String UserId = null;
-    MaxentTagger tagger = null;
     public boolean dropLocationFlag = false;
     public boolean pickUpLocationFlag = false;
     public boolean UserIdFlag = false;
     public boolean userPlaceDropFlag = false;
     public boolean userPlacePickUpFlag = false;
 
-    private static final String TAG = MainActivity.class.getSimpleName();
-
+    private final int REQ_CODE_SPEECH_INPUT = 100;
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 1000;
 
     private Location mLastLocation;
-
-    // Google client to interact with Google API
     private GoogleApiClient mGoogleApiClient;
+    ImageButton speakButton;
 
-    // boolean flag to toggle periodic location updates
-    private boolean mRequestingLocationUpdates = false;
-
-    private LocationRequest mLocationRequest;
-
-    // Location updates intervals in sec
-    private static int UPDATE_INTERVAL = 10000; // 10 sec
-    private static int FATEST_INTERVAL = 5000; // 5 sec
-    private static int DISPLACEMENT = 10; // 10 meters
-
-
+    MaxentTagger tagger = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        buttonSend = (Button) findViewById(R.id.send);
-
+        buttonSend = (ImageButton) findViewById(R.id.send);
         listView = (ListView) findViewById(R.id.msgview);
 
 
-        try {
+        /*try {
             tagger = new MaxentTagger(
                     "taggers/left3words-wsj-0-18.tagger");
         } catch (IOException e) {
@@ -140,13 +131,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         } catch (ClassNotFoundException e) {
             Log.e("clas", "not found");
             e.printStackTrace();
-        }
+        }*/
+        new StanfordThread(this).execute();
         Log.e("done with tagging", "yo");
 
 
         if (checkPlayServices()) {
-
-            // Building the GoogleApi client
             buildGoogleApiClient();
         }
 
@@ -192,9 +182,52 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         });
 
+        speakButton = (ImageButton)findViewById(R.id.speech);
+        speakButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                promptSpeechInput();
+            }
+        });
+
     }
 
-     String displayLocation() {
+    private void promptSpeechInput() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT,
+                getString(R.string.speech_prompt));
+        try {
+            startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
+        } catch (ActivityNotFoundException a) {
+            Toast.makeText(getApplicationContext(),
+                    getString(R.string.speech_not_supported),
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch (requestCode) {
+            case REQ_CODE_SPEECH_INPUT: {
+                if (resultCode == RESULT_OK && null != data) {
+
+                    ArrayList<String> result = data
+                            .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                    sendBotMessage(result.get(0));
+                }
+                break;
+            }
+
+        }
+    }
+
+
+    String displayLocation() {
 
         String currentAddress = "";
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -633,6 +666,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         else
             UserIdFlag = false;
     }
+
     public void statusSearch(String status,boolean placeFlag )
     {
         Log.e("SS", placeFlag + "");
@@ -647,6 +681,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 userPlacePickUpFlag = true;
         }
 
+    }
+
+    public void maxentTagger(MaxentTagger tagger)
+    {
+        this.tagger = tagger;
     }
 
     @Override
@@ -719,25 +758,28 @@ class Network extends AsyncTask<String[],Void,String[]>
                 Log.e("pic", dropLocation);
                 Log.e("pic", pickUpLocation);
                 Log.e("in", "try");
-                HttpPost post = new HttpPost("http://35.166.44.35:8080/testapi/webapi/trips/trip/book");
+                HttpPost post = new HttpPost("http://35.166.44.35:8080/testapi/webapi/trips/trip/book2");
                 Log.e("after", "post");
 
-                json.put("t_mobileno", "9676190692");
-                json.put("tu_userid", "617");
-                json.put("t_bidredius", "4");
-                json.put("t_bidamount", "20");
-                json.put("tv_vehicalid", "547");
-                json.put("t_status", "New");
-                json.put("t_type", "Bid");
+                json.put("t_bidamount", "0");
+                json.put("t_bidredius", "0");
                 json.put("t_bookdatetime", currentDateTimeString);
-                json.put("td_driverid", "546");
-                json.put("t_picplace", pickUpLocation);
-                json.put("t_dropplace", dropLocation);
-                json.put("t_totalfare", "59.8");
-                json.put("t_picdatetime", "");
                 json.put("t_dropdatetime", "0000-00-00 00:00:00");
-                json.put("t_rating", "1");
+                //json.put("t_dropplace", dropLocation);
+                json.put("t_dropplace", "Vijaywada");
+                json.put("t_mobileno", "9515119304");
+                json.put("t_picdatetime", "");
+                //json.put("t_picplace", pickUpLocation);
+                json.put("t_picplace", "Hyderabad");
+                json.put("t_status", "New");
+                json.put("t_totalfare", "0");
+                json.put("t_type", "Chat");
+                json.put("td_driverid", "836");
+                json.put("tu_userid", "764");
+                json.put("tv_vehicalid", "837");
+                json.put("t_rating", "3");
                 json.put("t_feedback", "good");
+
                 StringEntity se = new StringEntity(json.toString());
                 se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
                 post.setEntity(se);
@@ -805,6 +847,38 @@ class Network extends AsyncTask<String[],Void,String[]>
                 e.printStackTrace();
             }
         }
+        return null;
+    }
+}
+
+class StanfordThread extends AsyncTask<Void, Void, Void>
+{
+
+    public interface MaxentTaggerAsync {
+        void maxentTagger(edu.stanford.nlp.tagger.maxent.MaxentTagger tagger);
+    }
+    public MaxentTaggerAsync mt = null;
+
+
+    public StanfordThread(MaxentTaggerAsync mt)
+    {
+        this.mt = mt;
+    }
+
+    @Override
+    protected Void doInBackground(Void... voids) {
+        MaxentTagger tagger = null;
+        try {
+            tagger = new MaxentTagger(
+                    "taggers/left3words-wsj-0-18.tagger");
+        } catch (IOException e) {
+            Log.e("taggger", e + "");
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            Log.e("clas", "not found");
+            e.printStackTrace();
+        }
+        mt.maxentTagger(tagger);
         return null;
     }
 }

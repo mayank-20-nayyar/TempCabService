@@ -16,7 +16,8 @@
 
             <margin
                 android:bottom = "2dp"
-                android:top = "2dp" />
+                android:top = "2dp"
+                android:left = "2dp" />
 
             <corners android:radius="8dp" />
         </shape>
