@@ -9,18 +9,21 @@
         android:topLeftRadius="10dp"
         android:topRightRadius="10dp" />
 
-    <solid android:color="#CFCFCF" />
+    <solid android:color="#F0FFFF" />
 
     <padding
-        android:bottom="0dp"
-        android:left="0dp"
-        android:right="0dp"
-        android:top="0dp" />
+        android:bottom="5dp"
+        android:left="5dp"
+        android:right="5dp"
+        android:top="5dp" />
+    <margin
+        android:bottom = "3dp"
+        android:left = "5dp" />
 
     <size
-        android:height="30dp"
-        android:width="80dp" />
+        android:height="25dp"
+        android:width="50dp" />
 
-    <stroke android:width="5px" android:color="#000000" />
+    <stroke android:width="2px" android:color= "#0099CC" />
 
 </shape>

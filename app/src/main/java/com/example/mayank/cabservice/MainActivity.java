@@ -31,6 +31,7 @@ import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 import android.location.Location;
+import android.graphics.Color;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
@@ -91,19 +92,31 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
     private EditText chatText;
     private ImageButton buttonSend;
     private boolean side = false;
-    public String[] st = {"weather", "book ride"};
+    public String[] st = {"weather", "book ride", "Yes", "Fast Book", "Fast Bid"};
     private CardArrayAdapter cardArrayAdapter;
     private ListView listView;
     public int flag;
-    String receivedMessage = "";
+    public String receivedMessage = "";
     public String dropLocation;
     public String pickUpLocation;
+    public String currentLocation;
     public String UserId = null;
+    public String BidorBook = null;
+    public String  tempCurrentLocation = "";
+    public String tempDropLocation = "";
+    public String tempPickUpLocation = "";
+
     public boolean dropLocationFlag = false;
     public boolean pickUpLocationFlag = false;
     public boolean UserIdFlag = false;
     public boolean userPlaceDropFlag = false;
     public boolean userPlacePickUpFlag = false;
+    public boolean fastBidBookFlag = false;
+    public boolean fastUserPlaceDropFlag = false;
+    public boolean fastUserPlacePickFlag = false;
+    public boolean fastDropFlag = false;
+    boolean localAllVerifiedFlag = false;
+
 
     private final int REQ_CODE_SPEECH_INPUT = 100;
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 1000;
@@ -147,7 +160,9 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
 
         sendBotMessage("I am Vihik Bot.");
         sendBotMessage("In order to chat with drivers you \n will need to create a trip. \n I will help with trip creation.");
-        sendBotMessage("Please provide your drop location ?");
+        sendBotMessage("Please provide your drop location or choose the below options");
+        showButton("FAST BOOK",3);
+        showButton("FAST BID", 4);
 
         chatText = (EditText) findViewById(R.id.msg);
         chatText.setOnKeyListener(new View.OnKeyListener() {
@@ -166,7 +181,10 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
                 sendChatMessage(receivedMessage);
                 Log.e("below", "chat");
                 Log.e("the", receivedMessage);
-                decodeMessage(receivedMessage);
+                if(fastBidBookFlag == true)
+                    decodeMessageFast(receivedMessage);
+                else
+                    decodeMessage(receivedMessage);
             }
         });
 
@@ -307,6 +325,7 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
 
     void decodeMessage(String message)
     {
+
         if(flag == 0) {
             String tempDroplocation = extractLocation(message,flag);
             String[] tempDropArray = tempDroplocation.split("\\s");
@@ -321,8 +340,9 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
                         Log.e("DLF",dropLocationFlag + "");
                         if(dropLocationFlag && userPlaceDropFlag) {
                             sendBotMessage("Detecting your current location.");
-                            String currentLocation = displayLocation();
-                            sendBotMessage("Drop location verified. \n We detected \n" + currentLocation +  "\n as pickup location. \n Do you want to use this as pickup location ? \n Say yes or write any other location");
+                            currentLocation = displayLocation();
+                            sendBotMessage("Drop location verified. \n We detected \n" + currentLocation +  "\n as pickup location. \n Do you want to use this as pickup location ? \n Press yes or write any other location");
+                            showButton("YES",2);
                             flag++;
                         }
                         else if (dropLocationFlag == true && userPlaceDropFlag == false){
@@ -346,17 +366,24 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
             String tempPickUpLocation;
             String[] tempPickUpArray;
             if(message.equals("Yes") || message.equals("yes") || message.equals("YES")) {
-                tempPickUpLocation = "current location";
-                pickUpLocation = tempPickUpLocation;
-                sendBotMessage("Trip Id is being generated. Thanks for your patience.");
-                sendJson(dropLocation,pickUpLocation);
+                tempPickUpLocation = currentLocation;
+                if(tempPickUpLocation.contains("Hyderabad")) {
+                    pickUpLocation = tempPickUpLocation;
+                    sendBotMessage("Trip Id is being generated. Thanks for your patience.");
+                    sendJson(dropLocation, pickUpLocation);
 
-                sendBotMessage("The drop location is: " + dropLocation + ".");
-                sendBotMessage("The pick up location is: " + pickUpLocation + ".");
-                sendBotMessage("The Id is: " + UserId + ".");
-                sendBotMessage("Thanks for booking through us.");
-                sendBotMessage("Press 1 to make a new booking");
-                flag ++;
+                    sendBotMessage("The drop location is: " + dropLocation + ".");
+                    sendBotMessage("The pick up location is: " + pickUpLocation + ".");
+                    sendBotMessage("The Id is: " + UserId + ".");
+                    sendBotMessage("Thanks for booking through us.");
+                    sendBotMessage("Press 1 to make a new booking");
+                    flag++;
+                }
+                else
+                {
+                    flag = 1;
+                    sendBotMessage("The Vihik cab service is limited to Hyderabad as of now. We request you to enter pick up location in Hyderabad itself");
+                }
 
             }
             else {
@@ -587,6 +614,7 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
         myButton.setText(user);
         myButton.setBackgroundResource(R.drawable.button_shape);
         myButton.setId(id);
+        myButton.setTextColor(Color.parseColor("#0099CC"));
 
         LinearLayout ll = (LinearLayout) findViewById(R.id.sec_layout);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -600,10 +628,179 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
                 LinearLayout ll = (LinearLayout) findViewById(R.id.sec_layout);
                 ll.removeAllViews();
                 sendChatMessage(st[id]);
+                if(id == 2)
+                    decodeMessage(st[id]);
+                if(id == 3 || id == 4) {
+                    fastBookBid(st[id]);
+                    fastBidBookFlag = true;
+                }
             }
         });
 
     }
+
+    void fastBookBid(String book_or_bid)
+    {
+        BidorBook = book_or_bid;
+        sendBotMessage("You have chosen " + book_or_bid + " option.\n You may follow the below template.");
+        if(book_or_bid.contains("Fast Book"))
+            sendBotMessage("to Char Minar from Almond Bakery.");
+        else
+            sendBotMessage("to Char Minar from Almond Bakery @ Rs. 10/km.");
+        sendBotMessage("If you want your current location as pick up then you may directly write your drop location");
+
+    }
+
+    void decodeMessageFast(String message){
+        if(message.contains("Bid") || message.contains("Book") || message.contains("BID") || message.contains("BOOK") || message.contains("bid") || message.contains("book"))
+        {
+            message = message.replace("Bid","");
+            message = message.replace("Book","");
+            message = message.replace("BID","");
+            message = message.replace("BOOK","");
+            message = message.replace("bid","");
+            message = message.replace("book","");
+        }
+        String posTaggedString = postagger(message);
+        String[] posArray = posTaggedString.split("\\s");
+        String[] innerposArray;
+
+        boolean toFlag = false;
+        boolean fromFlag = false;
+
+
+        if((message.contains("to")&& message.contains("from"))||(message.contains("TO")&& message.contains("FROM"))||(message.contains("to")&& message.contains("from"))||(message.contains("To")&& message.contains("from"))||(message.contains("to")&& message.contains("From"))) {
+            for (int i = 0; i < posArray.length; i++) {
+                innerposArray = posArray[i].split("/");
+                if (innerposArray[1].equals("TO") && (innerposArray[0].equals("to") || innerposArray[0].equals("To") || innerposArray[0].equals("TO"))) {
+                    int j = 1;
+                    boolean f = true;
+                    while (f && (i + j) < posArray.length) {
+                        innerposArray = posArray[i + j].split("/");
+                        if (innerposArray[1].equals("NN") || innerposArray[1].equals("NNS") || innerposArray[1].equals("NNP") || innerposArray[1].equals("CD")) {
+                            tempDropLocation += innerposArray[0] + " ";
+                            j++;
+                            f = true;
+                        } else
+                            f = false;
+                    }
+                    toFlag = true;
+                }
+                if (innerposArray[1].equals("IN") && innerposArray[0].equals("from")) {
+                    int j = 1;
+                    boolean f = true;
+                    while (f && (i + j) < posArray.length) {
+                        innerposArray = posArray[i + j].split("/");
+                        if (innerposArray[1].equals("NN") || innerposArray[1].equals("NNS") || innerposArray[1].equals("NNP") || innerposArray[1].equals("CD")) {
+                            tempPickUpLocation += innerposArray[0] + " ";
+                            j++;
+                            f = true;
+                        } else
+                            f = false;
+                    }
+                    fromFlag = true;
+                }
+
+
+            }
+        }
+        else if(message.contains("to")||message.contains("To")|| message.contains("TO")) {
+            for (int i = 0; i < posArray.length; i++) {
+                innerposArray = posArray[i].split("/");
+                if (innerposArray[1].equals("TO") && (innerposArray[0].equals("to") || innerposArray[0].equals("To") || innerposArray[0].equals("TO"))) {
+                    int j = 1;
+                    boolean f = true;
+                    while (f && (i + j) < posArray.length) {
+                        innerposArray = posArray[i + j].split("/");
+                        if (innerposArray[1].equals("NN") || innerposArray[1].equals("NNS") || innerposArray[1].equals("NNP") || innerposArray[1].equals("CD")) {
+                            tempDropLocation += innerposArray[0] + " ";
+                            j++;
+                            f = true;
+                        } else
+                            f = false;
+                    }
+                    toFlag = true;
+                }
+
+            }
+        }
+        else
+        {
+            sendBotMessage("We could not successfully get your locations.\n Please follow the template for fast results.");
+        }
+        if(toFlag && fromFlag)
+        {
+            sendJson(tempDropLocation, "NO");
+            sendJson(tempPickUpLocation, "NO");
+            sendBotMessage("We are verifying your drop and pick up location. Thanks  for your patience");
+            Handler handle = new Handler();
+            handle.postDelayed(new Runnable() {
+                public void run() {
+                    if(fastUserPlaceDropFlag && fastUserPlacePickFlag)
+                        localAllVerifiedFlag = true;
+                    else if((fastUserPlaceDropFlag && !fastUserPlacePickFlag) || (!fastUserPlaceDropFlag && fastUserPlacePickFlag))
+                    {
+                        sendBotMessage("The Vihik bot service is as of now limited to Hyderabad. Please use the locations within Hyderabad only.");
+                        fastUserPlaceDropFlag = false;
+                        fastUserPlacePickFlag = false;
+                        localAllVerifiedFlag = false;
+                    }
+
+                }
+            }, 4000);
+        }
+        else if(toFlag)
+        {
+            sendJson(tempDropLocation, "NO");
+            tempCurrentLocation = displayLocation();
+            sendBotMessage("We are verifying your drop and  current location. Thanks for your patience");
+            Handler handle = new Handler();
+            handle.postDelayed(new Runnable() {
+                public void run() {
+                 if(tempCurrentLocation.contains("Hyderabad") && fastUserPlaceDropFlag)
+                 {
+                     localAllVerifiedFlag = true;
+                     tempPickUpLocation = tempCurrentLocation;
+                 }
+                    else{
+                     sendBotMessage("The Vihik bot service is as of now limited to Hyderabad. Please use the locations within Hyderabad only.");
+                     fastUserPlaceDropFlag = false;
+                     fastUserPlacePickFlag = false;
+                     localAllVerifiedFlag = false;
+                 }
+                }
+            }, 4000);
+
+
+        }
+        if(localAllVerifiedFlag)
+        {
+            sendJson(tempDropLocation, tempPickUpLocation);
+            Handler handle = new Handler();
+            handle.postDelayed(new Runnable() {
+                public void run() {
+                    if(UserIdFlag){
+                        sendBotMessage("The drop location is: " + tempDropLocation + ".");
+                        sendBotMessage("The pick up location is: " + tempPickUpLocation + ".");
+                        sendBotMessage("The Id is: " + UserId + ".");
+                        sendBotMessage("Thanks for booking through us.");
+                        sendBotMessage("Press 1 to make a new booking");
+                    }
+                    else
+                    {
+                        sendBotMessage("Some technical issue. Please try after sometime");
+                        UserIdFlag = false;
+                        fastUserPlaceDropFlag = false;
+                        fastUserPlacePickFlag = false;
+                        localAllVerifiedFlag = false;
+
+                    }
+                }
+            }, 5000);
+        }
+
+    }
+
 
     void showTime()
     {
@@ -670,16 +867,29 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
     public void statusSearch(String status,boolean placeFlag )
     {
         Log.e("SS", placeFlag + "");
-        if(status.equals("OK") && flag == 0 ) {
-            dropLocationFlag = true;
-            if(placeFlag == true)
-                userPlaceDropFlag = true;
+        if(!fastBidBookFlag) {
+            if (status.equals("OK") && flag == 0) {
+                dropLocationFlag = true;
+                if (placeFlag == true)
+                    userPlaceDropFlag = true;
+            }
+            if (status.equals("OK") && flag == 1) {
+                pickUpLocationFlag = true;
+                if (placeFlag == true)
+                    userPlacePickUpFlag = true;
+            }
         }
-        if(status.equals("OK") && flag == 1 ) {
-            pickUpLocationFlag = true;
-            if(placeFlag == true)
-                userPlacePickUpFlag = true;
+        else
+        {
+            if(status.equals("OK") && fastDropFlag == false){
+                fastUserPlaceDropFlag = true;
+                fastDropFlag = true;
+            }
+            if(status.equals("OK") && fastDropFlag == true){
+                fastUserPlacePickFlag = true;
+            }
         }
+
 
     }
 
@@ -881,4 +1091,9 @@ class StanfordThread extends AsyncTask<Void, Void, Void>
         mt.maxentTagger(tagger);
         return null;
     }
+}
+
+class FastBookBid
+{
+
 }
