@@ -102,9 +102,11 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
     public String currentLocation;
     public String UserId = null;
     public String BidorBook = null;
-    public String  tempCurrentLocation = "";
+    public String tempCurrentLocation = "";
     public String tempDropLocation = "";
     public String tempPickUpLocation = "";
+    public String tempFastMessage = "";
+    public String bidRate = "";
 
     public boolean dropLocationFlag = false;
     public boolean pickUpLocationFlag = false;
@@ -115,7 +117,8 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
     public boolean fastUserPlaceDropFlag = false;
     public boolean fastUserPlacePickFlag = false;
     public boolean fastDropFlag = false;
-    boolean localAllVerifiedFlag = false;
+    public boolean localAllVerifiedFlag = false;
+    public boolean localBidFlag = false;
 
 
     private final int REQ_CODE_SPEECH_INPUT = 100;
@@ -652,6 +655,9 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
     }
 
     void decodeMessageFast(String message){
+
+        if(message.contains("Bid")||message.contains("BID")||message.contains("bid"))
+            localBidFlag = true;
         if(message.contains("Bid") || message.contains("Book") || message.contains("BID") || message.contains("BOOK") || message.contains("bid") || message.contains("book"))
         {
             message = message.replace("Bid","");
@@ -662,14 +668,17 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
             message = message.replace("book","");
         }
         String posTaggedString = postagger(message);
+        Log.e("the postagged string",posTaggedString);
         String[] posArray = posTaggedString.split("\\s");
         String[] innerposArray;
 
+        String tempMessage = "";
         boolean toFlag = false;
         boolean fromFlag = false;
 
 
         if((message.contains("to")&& message.contains("from"))||(message.contains("TO")&& message.contains("FROM"))||(message.contains("to")&& message.contains("from"))||(message.contains("To")&& message.contains("from"))||(message.contains("to")&& message.contains("From"))) {
+            Log.e("inside","if");
             for (int i = 0; i < posArray.length; i++) {
                 innerposArray = posArray[i].split("/");
                 if (innerposArray[1].equals("TO") && (innerposArray[0].equals("to") || innerposArray[0].equals("To") || innerposArray[0].equals("TO"))) {
@@ -730,12 +739,15 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
         }
         if(toFlag && fromFlag)
         {
+            Log.e("d",tempDropLocation + " " + tempPickUpLocation);
+            Log.e("inside","to and from flag");
             sendJson(tempDropLocation, "NO");
             sendJson(tempPickUpLocation, "NO");
             sendBotMessage("We are verifying your drop and pick up location. Thanks  for your patience");
             Handler handle = new Handler();
             handle.postDelayed(new Runnable() {
                 public void run() {
+                    Log.e("f",fastUserPlaceDropFlag + " " + fastUserPlacePickFlag);
                     if(fastUserPlaceDropFlag && fastUserPlacePickFlag)
                         localAllVerifiedFlag = true;
                     else if((fastUserPlaceDropFlag && !fastUserPlacePickFlag) || (!fastUserPlaceDropFlag && fastUserPlacePickFlag))
@@ -747,7 +759,7 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
                     }
 
                 }
-            }, 4000);
+            }, 5000);
         }
         else if(toFlag)
         {
@@ -773,31 +785,50 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
 
 
         }
-        if(localAllVerifiedFlag)
-        {
-            sendJson(tempDropLocation, tempPickUpLocation);
-            Handler handle = new Handler();
-            handle.postDelayed(new Runnable() {
-                public void run() {
-                    if(UserIdFlag){
-                        sendBotMessage("The drop location is: " + tempDropLocation + ".");
-                        sendBotMessage("The pick up location is: " + tempPickUpLocation + ".");
-                        sendBotMessage("The Id is: " + UserId + ".");
-                        sendBotMessage("Thanks for booking through us.");
-                        sendBotMessage("Press 1 to make a new booking");
-                    }
-                    else
+        tempFastMessage = message;
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            public void run() {
+                Log.e("lav",localAllVerifiedFlag + "");
+                if(localAllVerifiedFlag)
+                {
+                    if(localBidFlag)
                     {
-                        sendBotMessage("Some technical issue. Please try after sometime");
-                        UserIdFlag = false;
-                        fastUserPlaceDropFlag = false;
-                        fastUserPlacePickFlag = false;
-                        localAllVerifiedFlag = false;
+                        tempFastMessage = tempFastMessage.replace(tempDropLocation,"");
+                        tempFastMessage = tempFastMessage.replace(tempPickUpLocation,"");
+                        bidRate = tempFastMessage.replaceAll("[^0-9]","");
+                        Log.e("The bid  rate is", bidRate);
 
                     }
+
+                    sendJson(tempDropLocation, tempPickUpLocation);
+                    Handler handle = new Handler();
+                    handle.postDelayed(new Runnable() {
+                        public void run() {
+                            if(UserIdFlag){
+                                sendBotMessage("The drop location is: " + tempDropLocation + ".");
+                                sendBotMessage("The pick up location is: " + tempPickUpLocation + ".");
+                                sendBotMessage("The Id is: " + UserId + ".");
+                                if(localBidFlag)
+                                    sendBotMessage("The bid rate as given by you is: " + bidRate + ".");
+                                sendBotMessage("Thanks for booking through us.");
+                                sendBotMessage("Press 1 to make a new booking");
+                            }
+                            else
+                            {
+                                sendBotMessage("Some technical issue. Please try after sometime");
+                                UserIdFlag = false;
+                                fastUserPlaceDropFlag = false;
+                                fastUserPlacePickFlag = false;
+                                localAllVerifiedFlag = false;
+
+                            }
+                        }
+                    }, 5000);
                 }
-            }, 5000);
-        }
+            }
+        }, 5000);
+
 
     }
 
@@ -884,9 +915,11 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
             if(status.equals("OK") && fastDropFlag == false){
                 fastUserPlaceDropFlag = true;
                 fastDropFlag = true;
+                Log.e("the first","nice");
             }
             if(status.equals("OK") && fastDropFlag == true){
                 fastUserPlacePickFlag = true;
+                Log.e("the sec","nice");
             }
         }
 
@@ -1091,9 +1124,4 @@ class StanfordThread extends AsyncTask<Void, Void, Void>
         mt.maxentTagger(tagger);
         return null;
     }
-}
-
-class FastBookBid
-{
-
 }
