@@ -84,7 +84,7 @@ import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 */
 
-public class MainActivity extends AppCompatActivity implements StanfordThread.MaxentTaggerAsync,GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
+public class MainActivity extends AppCompatActivity implements FareCalculator.FareResult, StanfordThread.MaxentTaggerAsync,GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
 
 
 
@@ -107,6 +107,10 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
     public String tempPickUpLocation = "";
     public String tempFastMessage = "";
     public String bidRate = "";
+    public String bidLatitudeDrop = "";
+    public String bidLongitudeDrop = "";
+    public String bidLatitudePickUp = "";
+    public String bidLongitudePickUp = "";
 
     public boolean dropLocationFlag = false;
     public boolean pickUpLocationFlag = false;
@@ -797,6 +801,7 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
                         tempFastMessage = tempFastMessage.replace(tempDropLocation,"");
                         tempFastMessage = tempFastMessage.replace(tempPickUpLocation,"");
                         bidRate = tempFastMessage.replaceAll("[^0-9]","");
+                        runFareCalculator(tempDropLocation, tempPickUpLocation, bidRate);
                         Log.e("The bid  rate is", bidRate);
 
                     }
@@ -832,6 +837,10 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
 
     }
 
+    void runFareCalculator(String tD, String tP, String bidR){
+        String[] bidData = {bidLatitudeDrop, bidLongitudeDrop, bidLatitudePickUp, bidLongitudePickUp, bidR};
+        new FareCalculator(this).execute(bidData);
+    }
 
     void showTime()
     {
@@ -895,7 +904,7 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
             UserIdFlag = false;
     }
 
-    public void statusSearch(String status,boolean placeFlag )
+    public void statusSearch(String status,boolean placeFlag, String latitude, String longitude)
     {
         Log.e("SS", placeFlag + "");
         if(!fastBidBookFlag) {
@@ -913,11 +922,15 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
         else
         {
             if(status.equals("OK") && fastDropFlag == false){
+                bidLatitudeDrop = latitude;
+                bidLongitudeDrop = longitude;
                 fastUserPlaceDropFlag = true;
                 fastDropFlag = true;
                 Log.e("the first","nice");
             }
             if(status.equals("OK") && fastDropFlag == true){
+                bidLatitudePickUp = latitude;
+                bidLongitudePickUp= longitude;
                 fastUserPlacePickFlag = true;
                 Log.e("the sec","nice");
             }
@@ -964,13 +977,17 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
         checkPlayServices();
     }
 
+    @Override
+    public void showBidRate() {
+
+    }
 }
 
 class Network extends AsyncTask<String[],Void,String[]>
 {
     public interface TranferResult {
         void process(String output);
-        void statusSearch(String status, boolean placeFlag);
+        void statusSearch(String status, boolean placeFlag, String latitude, String longitude);
     }
     public  TranferResult tf = null;
 
@@ -984,6 +1001,8 @@ class Network extends AsyncTask<String[],Void,String[]>
 
         String dropLocation = params[0][0];
         String pickUpLocation = params[0][1];
+        String latitude = "";
+        String longitude = "";
         if (!pickUpLocation.equals("NO")) {
 
             String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
@@ -1077,10 +1096,15 @@ class Network extends AsyncTask<String[],Void,String[]>
                     {
                         JSONObject jsonObject1 = jsonArray.getJSONObject(i);
                         Log.e("the name", jsonObject1.getString("formatted_address"));
-                        if(jsonObject1.getString("formatted_address").contains("Hyderabad"))
+                        if(jsonObject1.getString("formatted_address").contains("Hyderabad")) {
                             placeFlag = true;
+                            Double longitudeD = (jsonObject1.getJSONObject("geometry").getJSONObject("location").getDouble("lng"));
+                            Double latitudeD = (jsonObject1.getJSONObject("geometry").getJSONObject("location").getDouble("lat"));
+                            longitude = longitudeD.toString();
+                            latitude = latitudeD.toString();
+                        }
                     }
-                    tf.statusSearch(status, placeFlag);
+                    tf.statusSearch(status, placeFlag, latitude, longitude);
 
                 }
 
@@ -1093,6 +1117,7 @@ class Network extends AsyncTask<String[],Void,String[]>
         return null;
     }
 }
+
 
 class StanfordThread extends AsyncTask<Void, Void, Void>
 {
@@ -1123,5 +1148,81 @@ class StanfordThread extends AsyncTask<Void, Void, Void>
         }
         mt.maxentTagger(tagger);
         return null;
+    }
+}
+
+
+class FareCalculator extends AsyncTask<String[], Void, String>
+{
+
+
+    public interface FareResult {
+        void showBidRate();
+    }
+    public  FareResult fareResult = null;
+
+
+    public FareCalculator(FareResult fareResult)
+    {
+       this.fareResult = fareResult;
+    }
+    @Override
+    protected String doInBackground(String[]... strings) {
+
+        String latDrop = strings[0][0];
+        String longDrop = strings[0][1];
+        String latPick = strings[0][2];
+        String longPick = strings[0][3];
+        String bidRate = strings[0][4];
+
+        Looper.prepare(); //For Preparing Message Pool for the child Thread
+        HttpClient client = new DefaultHttpClient();
+        HttpConnectionParams.setConnectionTimeout(client.getParams(), 10000); //Timeout Limit
+        HttpResponse response;
+        JSONObject json = new JSONObject();
+
+        try {
+
+            Log.e("in", "try");
+            HttpPost post = new HttpPost("http://35.166.44.35:8080/testapi/webapi/fares/fare");
+            Log.e("after", "post");
+
+            json.put("f_piclat", latPick);
+            json.put("f_piclog", longPick);
+            json.put("f_droplat", latDrop);
+            json.put("f_droplog", longDrop);
+            json.put("f_price", bidRate);
+
+            StringEntity se = new StringEntity(json.toString());
+            se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
+            post.setEntity(se);
+            Log.e("after", "entity");
+            response = client.execute(post);
+            Log.e("code", response.getStatusLine().getStatusCode() + "");
+            Log.e("response", response + "");
+
+                    /*Checking response */
+            if (response != null) {
+                Log.e("in", "res");
+                String result = EntityUtils.toString(response.getEntity()); //Get the data in the entity
+                Log.e("the result", result);
+                JSONObject jsonObject = new JSONObject(result);
+                /*if (jsonObject.getString("success").equals("true")) {
+                    JSONObject data = jsonObject.getJSONObject("data");
+                    Log.e("data ", data.getString("t_id"));
+                    tf.process(data.getString("t_id"));
+                }
+                else
+                    tf.process("Some technical issue. Please try after sometime");*/
+
+
+            }
+
+        } catch (Exception e) {
+            Log.e("ex", e + "");
+            e.printStackTrace();
+        }
+
+            return null;
     }
 }
