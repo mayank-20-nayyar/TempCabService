@@ -134,6 +134,7 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
     public boolean localBidFlag = false;
     public boolean isBidReceivedFlag = false;
     public boolean tryOnceMoreFlag = false;
+    public boolean moreTryFlag = true;
 
 
     private final int REQ_CODE_SPEECH_INPUT = 100;
@@ -379,7 +380,7 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
                 flag = 0;
                 sendBotMessage(tempDroplocation);
             }
-        }
+            }
         else if(flag == 1){
             String tempPickUpLocation;
             String[] tempPickUpArray;
@@ -807,25 +808,41 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
                                                             handler2.postDelayed(new Runnable() {
                                                                 @Override
                                                                 public void run() {
-                                                                    if(tryCount < 8 && tryOnceMoreFlag) {
-                                                                        startTripCreation();
-                                                                        handler2.postDelayed(this, 15000);
+                                                                    if(moreTryFlag) {
+                                                                        Log.e("try count and TOMF", tryOnceMoreFlag + " " + tryCount + "");
+                                                                        if (tryCount < 8 && tryOnceMoreFlag) {
+                                                                            startTripCreation();
+                                                                            handler2.postDelayed(this, 15000);
+                                                                            Log.e("inside ", "again");
+                                                                            Log.e("try count", tryCount + " " + tryOnceMoreFlag + "");
+                                                                        }
+                                                                        if (tryCount == 8 && tryOnceMoreFlag) {
+                                                                            Log.e("inside", "middle");
+                                                                            runFailService();
+                                                                            Handler handler3 = new Handler();
+                                                                            handler3.postDelayed(new Runnable() {
+                                                                                @Override
+                                                                                public void run() {
+                                                                                    sendBotMessage("We are unable to fetch the driver right now. Please try after sometime");
+                                                                                }
+                                                                            }, 10000);
+
+
+                                                                        }
+                                                                        if (tryCount < 8 && tryOnceMoreFlag == false) {
+                                                                            Log.e("about", "to start  driver and vehicle");
+                                                                            startDriverAndVehicleService();
+                                                                            Handler handler3 = new Handler();
+                                                                            handler3.postDelayed(new Runnable() {
+                                                                                @Override
+                                                                                public void run() {
+                                                                                    sendBotMessage(driverMob + " " + driverName + " " + vehiclePlateNum);
+                                                                                }
+                                                                            }, 10000);
+                                                                        }
                                                                     }
-                                                                    if(tryCount == 8 && tryOnceMoreFlag)
-                                                                    {
-                                                                        sendBotMessage("We are unable to fetch the driver right now. Please try after sometime");
-                                                                    }
-                                                                    if(tryCount < 8 && tryOnceMoreFlag == false)
-                                                                    {
-                                                                        startDriverAndVehicleService();
-                                                                        Handler  handler3 = new Handler();
-                                                                        handler3.postDelayed(new Runnable() {
-                                                                            @Override
-                                                                            public void run() {
-                                                                                sendBotMessage(driverMob + " " + driverName + " " + vehiclePlateNum);
-                                                                            }
-                                                                        }, 10000);
-                                                                    }
+                                                                    else
+                                                                        sendBotMessage("Unable to process further. Please try after some time");
                                                                 }
                                                             }, 15000);
 
@@ -951,8 +968,15 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
 
     }
 
+
+    void runFailService(){
+        new FailService().execute(UserId);
+    }
     void startDriverAndVehicleService(){
+
         Log.e("inside","driver n vehicle");
+        String[] s = {driverId, vehicleId};
+        new DriverAndVehicle(this).execute(s);
 
     }
 
@@ -1124,13 +1148,16 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
     @Override
     public void showDriverId(String output) {
 
+        Log.e("output",output);
         if(output.equals("Wait for sometime"))
         {
+
             tryOnceMoreFlag = true;
             tryCount++;
         }
-        if(output.equals("Some technical issue. Please try after sometime"))
+        else if(output.equals("Some technical issue. Please try after sometime"))
         {
+            moreTryFlag =  false;
             resetFunction();
         }
         else{
@@ -1147,7 +1174,7 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
 
     void resetFunction()
     {
-        sendBotMessage("\"Some technical issue. Please try after sometime");
+        sendBotMessage("Some technical issue. Please try after sometime");
         tryOnceMoreFlag = true;
         tryCount = 0;
     }
@@ -1209,22 +1236,25 @@ class Network extends AsyncTask<String[],Void,String[]>
                 HttpPost post = new HttpPost("http://35.166.44.35:8080/testapi/webapi/trips/trip/book2");
                 Log.e("after", "post");
 
-                json.put("t_status", "New");
-                json.put("tv_vehicalid", "879");
-                json.put("t_totalfare", "");
-                json.put("t_bookdatetime", currentDateTimeString);
-                json.put("t_picplace", pickUpLocation);
-                json.put("t_mobileno", "9676190692");
-                json.put("t_bidredius", "0");
-                json.put("t_type", "Bid");
-                json.put("t_rating", "3");
                 json.put("t_bidamount", totalBid);
-                json.put("t_dropdatetime", "");
+                json.put("t_bidredius", "3");
+                json.put("t_bookdatetime", currentDateTimeString);
                 json.put("t_picdatetime", "");
-                json.put("t_feedback", "good");
                 json.put("t_dropplace", dropLocation);
-                json.put("td_driverid", "878");
-                json.put("tu_userid", "764");
+                json.put("t_mobileno", "9676190692");
+                json.put("t_dropdatetime", "");
+                json.put("t_picplace", pickUpLocation);
+                json.put("t_status", "New");
+                json.put("t_totalfare", "200");
+                json.put("t_type", "Bid");
+                json.put("td_driverid", "1029");
+                json.put("tu_userid", "773");
+                json.put("tv_vehicalid", "1030");
+                json.put("t_rating", "0");
+                json.put("t_feedback", "");
+
+
+
 
 
                 StringEntity se = new StringEntity(json.toString());
@@ -1432,8 +1462,12 @@ class CreateTrip extends AsyncTask<String, Void, String>
     protected String doInBackground(String... strings) {
 
         String tripId = strings[0];
+        Log.e("the user id is",tripId);
 
-        Looper.prepare(); //For Preparing Message Pool for the child Thread
+        if (Looper.myLooper() == null)
+        {
+            Looper.prepare();
+        }
         HttpClient client = new DefaultHttpClient();
        // HttpConnectionParams.setConnectionTimeout(client.getParams(), 10000); //Timeout Limit
         HttpResponse response;
@@ -1468,7 +1502,9 @@ class CreateTrip extends AsyncTask<String, Void, String>
                 JSONObject jsonObject = new JSONObject(result);
                 if (jsonObject.getString("success").equals("true")) {
                     String status = jsonObject.getJSONObject("data").getString("t_status");
-                    if(status.equals("Accept")) {
+                    Log.e("status",status);
+                    // code changed  here for testing. later change new to Accepted.
+                    if(status.equals("New")) {
                         String driverId = jsonObject.getJSONObject("data").getString("td_driverid");
                         String vehicleId = jsonObject.getJSONObject("data").getString("tv_vehicalid");
                         tripResult.showDriverId(driverId);
@@ -1597,4 +1633,58 @@ class DriverAndVehicle extends AsyncTask<String[], Void, String>
 }
 
 
+class FailService extends AsyncTask<String, Void, String>
+{
 
+    @Override
+    protected String doInBackground(String... strings) {
+
+        String UserId = strings[0];
+        Looper.prepare();
+        HttpClient client = new DefaultHttpClient();
+        
+        HttpResponse response;
+        
+       
+        
+        try {
+
+
+            Log.e("in fare", "try");
+            HttpPost post = new HttpPost("http://35.166.44.35:8080/testapi/webapi/trips/trip/book/status2/" + UserId);
+            Log.e("after fare", "post");
+
+            json.put("t_status", "failed");
+           
+
+            StringEntity se = new StringEntity(json.toString());
+            se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
+            post.setEntity(se);
+            Log.e("after fare", "entity");
+            response = client.execute(post);
+            Log.e("code fare", response.getStatusLine().getStatusCode() + "");
+            Log.e("response fare", response + "");
+
+
+            request.setURI(URI.create("http://35.166.44.35:8080/testapi/webapi/trips/trip/book/status2/" + UserId));
+            response = client.execute(request);
+            Log.e("code driver", response.getStatusLine().getStatusCode() + "");
+            Log.e("response fare", response + "");
+
+
+            if (response != null) {
+               Log.e("updated","suc deleted trip");
+
+
+            }
+        } catch (JSONException e1) {
+            e1.printStackTrace();
+        } catch (ClientProtocolException e1) {
+            e1.printStackTrace();
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+
+        return null;
+    }
+}
