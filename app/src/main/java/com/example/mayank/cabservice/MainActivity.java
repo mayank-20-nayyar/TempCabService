@@ -19,7 +19,9 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.v7.widget.CardView;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AbsListView;
@@ -29,6 +31,7 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.location.Location;
 import android.graphics.Color;
@@ -89,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
 
 
 
-    private ChatArrayAdapter chatArrayAdapter;
+    public ChatArrayAdapter chatArrayAdapter;
     private EditText chatText;
     private ImageButton buttonSend;
     private boolean side = false;
@@ -135,6 +138,7 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
     public boolean isBidReceivedFlag = false;
     public boolean tryOnceMoreFlag = false;
     public boolean moreTryFlag = true;
+    public boolean isCardFlag = false;
 
 
     private final int REQ_CODE_SPEECH_INPUT = 100;
@@ -771,6 +775,9 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
 
 
                         Log.e("temp fast",tempFastMessage + localAllVerifiedFlag + fastBidBookFlag + localBidFlag);
+                        isCardFlag = true;
+                        sendBotMessage(tempDropLocation + "\n" + tempPickUpLocation);
+                        isCardFlag = false;
                         Handler handler = new Handler();
                         handler.postDelayed(new Runnable() {
                             public void run() {
@@ -796,13 +803,20 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
                                                 handler1.postDelayed(new Runnable() {
                                                     public void run() {
                                                         if (UserIdFlag) {
-                                                            sendBotMessage("The drop location is: " + tempDropLocation + ".");
-                                                            sendBotMessage("The pick up location is: " + tempPickUpLocation + ".");
-                                                            sendBotMessage("The Id is: " + UserId + ".");
-                                                            if (localBidFlag)
-                                                                sendBotMessage("The bid rate as given by you is: " + bidRate + ".");
-                                                            sendBotMessage("Thanks for booking through us.");
-                                                            sendBotMessage("Press 1 to make a new booking");
+                                                            String message = null;
+                                                            message += "Drop Location: " + tempDropLocation + "\n" + "PickUp Location: " + tempPickUpLocation + "\n" + "Id is: " + UserId + "\n";
+                                                            //sendBotMessage("The drop location is: " + tempDropLocation + ".");
+                                                            //sendBotMessage("The pick up location is: " + tempPickUpLocation + ".");
+                                                            //sendBotMessage("The Id is: " + UserId + ".");
+                                                            if (localBidFlag) {
+                                                                //sendBotMessage("The bid rate as given by you is: " + bidRate + ".");
+                                                                message += "Bid Rate: " + bidRate + "\n" + "Thanks for booking through us.";
+                                                            }
+                                                            //sendBotMessage("Thanks for booking through us.");
+                                                            //sendBotMessage("Press 1 to make a new booking");
+                                                            chatArrayAdapter.isCard = true;
+                                                            sendBotMessage(message);
+                                                            chatArrayAdapter.isCard = false;
                                                             startTripCreation();
                                                             final Handler handler2 = new Handler();
                                                             handler2.postDelayed(new Runnable() {
@@ -836,7 +850,12 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
                                                                             handler3.postDelayed(new Runnable() {
                                                                                 @Override
                                                                                 public void run() {
-                                                                                    sendBotMessage(driverMob + " " + driverName + " " + vehiclePlateNum);
+                                                                                    String message1 = null;
+                                                                                    //sendBotMessage(driverMob + " " + driverName + " " + vehiclePlateNum);
+                                                                                    message1 += "Driver Name: " + driverName + "\n" + "Driver Mobile Number: " + driverMob + "\n" + "Vehicle Plate Number: " + vehiclePlateNum;
+                                                                                    chatArrayAdapter.isCard = true;
+                                                                                    sendBotMessage(message1);
+                                                                                    chatArrayAdapter.isCard = false;
                                                                                 }
                                                                             }, 10000);
                                                                         }
@@ -969,6 +988,31 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
     }
 
 
+    void sendToCard(String message)
+    {
+        LinearLayout ll = (LinearLayout) findViewById(R.id.sec_layout);
+        CardView cardView = new CardView(getApplicationContext());
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        cardView.setLayoutParams(params);
+        cardView.setContentPadding(15,15,15,15);
+        cardView.setCardBackgroundColor(Color.parseColor("#FFFFFF"));
+        cardView.setMaxCardElevation(15);
+        cardView.setCardElevation(9);
+        TextView tv = new TextView(getApplicationContext());
+        tv.setLayoutParams(params);
+        tv.setText(message);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10);
+        tv.setTextColor(Color.BLUE);
+        cardView.addView(tv);
+        ll.addView(cardView);
+
+    }
+
+
     void runFailService(){
         new FailService().execute(UserId);
     }
@@ -1025,13 +1069,17 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
     }
 
     private boolean sendChatMessage(String message) {
-        chatArrayAdapter.add(new ChatMessage(side, message));
+        chatArrayAdapter.add(new ChatMessage(side, message, false));
         chatText.setText("");
         return true;
     }
 
     private boolean sendBotMessage(String mes) {
-        chatArrayAdapter.add(new ChatMessage(!side, mes));
+        if(isCardFlag == true)
+            chatArrayAdapter.add(new ChatMessage(!side, mes, true));
+        else{
+            chatArrayAdapter.add(new ChatMessage(!side, mes, false));
+        }
         return true;
     }
 
@@ -1233,7 +1281,7 @@ class Network extends AsyncTask<String[],Void,String[]>
                 Log.e("pic", dropLocation);
                 Log.e("pic", pickUpLocation);
                 Log.e("in", "try");
-                HttpPost post = new HttpPost("http://35.166.44.35:8080/testapi/webapi/trips/trip/book2");
+                HttpPost post = new HttpPost("http://35.154.105.140:8080/testapi/webapi/trips/trip/book2");
                 Log.e("after", "post");
 
                 json.put("t_bidamount", totalBid);
@@ -1504,7 +1552,7 @@ class CreateTrip extends AsyncTask<String, Void, String>
                     String status = jsonObject.getJSONObject("data").getString("t_status");
                     Log.e("status",status);
                     // code changed  here for testing. later change new to Accepted.
-                    if(status.equals("New")) {
+                    if(status.equals("Accepted")) {
                         String driverId = jsonObject.getJSONObject("data").getString("td_driverid");
                         String vehicleId = jsonObject.getJSONObject("data").getString("tv_vehicalid");
                         tripResult.showDriverId(driverId);
@@ -1641,6 +1689,8 @@ class FailService extends AsyncTask<String, Void, String>
 
         String UserId = strings[0];
         Looper.prepare();
+        HttpGet request = new HttpGet();
+        JSONObject json = new JSONObject();
         HttpClient client = new DefaultHttpClient();
         
         HttpResponse response;

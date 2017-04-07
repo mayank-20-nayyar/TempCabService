@@ -6,10 +6,12 @@ package com.example.mayank.cabservice;
 public class ChatMessage {
     public boolean left;
     public String message;
+    public boolean isCard = false;
 
-    public ChatMessage(boolean left, String message) {
+    public ChatMessage(boolean left, String message, boolean isCard) {
         super();
         this.left = left;
         this.message = message;
+        this.isCard = isCard;
     }
 }

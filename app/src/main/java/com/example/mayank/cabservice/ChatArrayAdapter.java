@@ -24,6 +24,7 @@ class ChatArrayAdapter extends ArrayAdapter<ChatMessage> {
     private TextView timeStamp;
     private List<ChatMessage> chatMessageList = new ArrayList<ChatMessage>();
     private Context context;
+    public boolean isCard = false;
 
     @Override
     public void add(ChatMessage object) {
@@ -52,10 +53,18 @@ class ChatArrayAdapter extends ArrayAdapter<ChatMessage> {
         Calendar calobj = Calendar.getInstance();
         String time_stamp = df.format(calobj.getTime());
 
-        if (chatMessageObj.left) {
+
+        if (chatMessageObj.left && chatMessageObj.isCard == false) {
+            Log.e("the mes",chatMessageObj.message + " " + chatMessageObj.isCard + "");
             row = inflater.inflate(R.layout.left, parent, false);
-        }else{
+        }else if (chatMessageObj.left == false && chatMessageObj.isCard == false){
+            Log.e("the mes",chatMessageObj.message + " " + chatMessageObj.isCard + "");
             row = inflater.inflate(R.layout.righht, parent, false);
+        }
+        else if(chatMessageObj.left == true && chatMessageObj.isCard == true)
+        {
+            Log.e("the mes",chatMessageObj.message + " " + chatMessageObj.isCard + "");
+            row = inflater.inflate(R.layout.card,parent, false);
         }
         chatText = (TextView) row.findViewById(R.id.msgr);
         timeStamp = (TextView)row.findViewById(R.id.time_stamp);
@@ -64,5 +73,10 @@ class ChatArrayAdapter extends ArrayAdapter<ChatMessage> {
         timeStamp.setText(time_stamp);
 
         return row;
+    }
+    void setCardFlag(boolean val)
+    {
+        isCard = val;
+        Log.e("isCard", isCard + "");
     }
 }

@@ -16,7 +16,15 @@
         android:background="@null"
         android:divider="@null"
         android:stackFromBottom="true"
-        android:transcriptMode="alwaysScroll"></ListView>
+        android:transcriptMode="alwaysScroll">
+
+        <!--<LinearLayout
+            android:id="@+id/third_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"></LinearLayout>-->
+
+    </ListView>
 
    <LinearLayout
         android:id="@+id/sec_layout"
