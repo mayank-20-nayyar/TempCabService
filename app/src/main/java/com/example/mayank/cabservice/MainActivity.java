@@ -11,10 +11,12 @@ import android.location.Location;
 import android.location.Address;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.os.Environment;
 import android.os.Looper;
 import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.multidex.MultiDex;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -35,7 +37,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.location.Location;
 import android.graphics.Color;
-
+/*
+import com.amazonaws.auth.CognitoCachingCredentialsProvider;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferObserver;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferUtility;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3Client;*/
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -44,9 +52,26 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.*;
+/*
 
+import com.textrazor.AnalysisException;
+import com.textrazor.NetworkException;
+import com.textrazor.annotations.AnalyzedText;
+import com.textrazor.annotations.Entity;
+import com.textrazor.annotations.Sentence;
+*/
+import com.textrazor.AnalysisException;
+import com.textrazor.NetworkException;
+import com.textrazor.TextRazor;
+import com.textrazor.annotations.AnalyzedText;
+import com.textrazor.annotations.Sentence;
+import com.textrazor.annotations.Word;
 import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
 import com.wdullaer.materialdatetimepicker.time.TimePickerDialog;
+
+/*
+import com.textrazor.annotations.Word;
+*/
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -63,10 +88,18 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+//import com.textrazor.TextRazor;
+
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -83,12 +116,15 @@ import java.util.TimerTask;
 import java.util.logging.LogRecord;
 
 import edu.stanford.nlp.tagger.maxent.MaxentTagger;
+
+
+
 /*
 import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 */
 
-public class MainActivity extends AppCompatActivity implements DriverAndVehicle.DVResult, CreateTrip.TripResult ,FareCalculator.FareResult, StanfordThread.MaxentTaggerAsync,GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
+public class MainActivity extends AppCompatActivity implements StanfordThread.MaxentTaggerAsync, TextRajor.TextRajorInterface,DriverAndVehicle.DVResult, CreateTrip.TripResult ,FareCalculator.FareResult, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
 
 
 
@@ -121,6 +157,7 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
     public String vehiclePlateNum = "";
     public String driverName = "";
     public String driverMob = "";
+    public String rajorTaggedString = "";
 
     public int tryCount = 0;
 
@@ -147,8 +184,22 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
     private Location mLastLocation;
     private GoogleApiClient mGoogleApiClient;
     ImageButton speakButton;
-
     MaxentTagger tagger = null;
+/*
+    AmazonS3Client s3;
+    TransferUtility transferUtility;*/
+
+    public File file;
+    public File file2;
+
+
+    @Override
+    protected void attachBaseContext(Context base)
+    {
+        super.attachBaseContext(base);
+        MultiDex.install(this);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -175,6 +226,10 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
         if (checkPlayServices()) {
             buildGoogleApiClient();
         }
+
+
+
+
 
         displayLocation();
 
@@ -492,7 +547,15 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
     {
         String completeLocation = "";
         boolean f = true;
-        String posTaggedMes = postagger(mes);
+        postagger(mes);
+        Handler h = new Handler();
+        h.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+
+            }
+        },5000);
+        String posTaggedMes = rajorTaggedString;
         String[] posArray;
         String[] innerArray;
         Log.e("tagged", posTaggedMes);
@@ -567,12 +630,23 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
         return null;
     }
 
-    String postagger(String mes)
-    {
+    String postagger(String mes) {
         String posTagged = null;
 
         posTagged = tagger.tagString(mes);
         return posTagged;
+        //rajorTaggedString = posTagged;
+    ///new TextRajor(this).execute(mes);
+
+        /*Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Log.e("this is nice","yo");
+            }
+        },5000);
+*/
+        //return "Bid/VB a/A cab/NN from/IN Almond/NNP Bakery/NNP Hyderabad/NNP to/TO CharMinar/NNP at/IN 10/CC";
     }
 
     /*void openNLP()
@@ -690,6 +764,7 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
             message = message.replace("book","");
         }
         String posTaggedString = postagger(message);
+        //String posTaggedString = rajorTaggedString;
         Log.e("the postagged string",posTaggedString);
         String[] posArray = posTaggedString.split("\\s");
         String[] innerposArray;
@@ -766,6 +841,48 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
             sendJson(tempDropLocation, "NO","NO");
             sendJson(tempPickUpLocation, "NO","NO");
             sendBotMessage("We are verifying your drop and pick up location. Thanks  for your patience");
+            /*credentialsProvider();
+            setTransferUtility();*/
+
+
+            file = new File(Environment.getExternalStorageDirectory() + File.separator + "test.txt");
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            byte[] data1={1,1,0,0};
+            if(file.exists())
+            {
+                OutputStream fo = null;
+                try {
+                    fo = new FileOutputStream(file);
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    fo.write(data1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    fo.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                //upLoadToFile();
+            }
+
+            file2 = new File(Environment.getExternalStorageDirectory() + File.separator + "test2.txt");
+            try {
+                file2.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+
+
+
             Handler handle = new Handler();
             handle.postDelayed(new Runnable() {
                 public void run() {
@@ -1140,10 +1257,13 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
 
     }
 
+
+
     public void maxentTagger(MaxentTagger tagger)
     {
         this.tagger = tagger;
     }
+
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
@@ -1240,6 +1360,79 @@ public class MainActivity extends AppCompatActivity implements DriverAndVehicle.
     @Override
     public void vehiclePlateNo(String output) {
         vehiclePlateNum = output;
+    }
+
+/*
+    public void credentialsProvider(){
+
+        }
+
+    public void setAmazonS3Client(CognitoCachingCredentialsProvider credentialsProvider){
+        CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
+                getApplicationContext(),
+                "us-west-2:c174953c-21c7-400e-95b6-b9c5737a3657",
+                Regions.US_WEST_2
+        );
+
+        setAmazonS3Client(credentialsProvider);
+
+
+        s3 = new AmazonS3Client(credentialsProvider);
+        s3.setRegion(Region.getRegion(Regions.US_WEST_2));
+
+    }
+    public void setTransferUtility(){
+
+        transferUtility = new TransferUtility(s3, getApplicationContext());
+    }
+
+    public void upLoadToFile(){
+        TransferObserver observer = transferUtility.upload(
+                "vihikbot",     *//* The bucket to upload to *//*
+                 "user_chat",    *//* The key for the uploaded object *//*
+                 file        *//* The file where the data to upload exists *//*
+        );
+        Log.e("uploaded", "the file");
+    }
+    public void downLoadFile(){
+        TransferObserver observer = transferUtility.upload(
+                "vihikbot",     *//* The bucket to upload to *//*
+                "user_chat",    *//* The key for the uploaded object *//*
+                file2        *//* The file where the data to upload exists *//*
+        );
+        Log.e("downloaded", "the file");
+
+        String ret = "";
+
+        try {
+            InputStream inputStream = getApplicationContext().openFileInput("test2.txt");
+
+            if ( inputStream != null ) {
+                InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+                String receiveString = "";
+                StringBuilder stringBuilder = new StringBuilder();
+
+                while ( (receiveString = bufferedReader.readLine()) != null ) {
+                    stringBuilder.append(receiveString);
+                }
+
+                inputStream.close();
+                ret = stringBuilder.toString();
+                Log.e("the read string",ret);
+            }
+        }
+        catch (FileNotFoundException e) {
+            Log.e("login activity", "File not found: " + e.toString());
+        } catch (IOException e) {
+            Log.e("login activity", "Can not read file: " + e.toString());
+        }
+    }*/
+    @Override
+    public void taggedString(String output)
+    {
+       // rajorTaggedString = output;
+        Log.e("please","w");
     }
 }
 
@@ -1384,6 +1577,7 @@ class Network extends AsyncTask<String[],Void,String[]>
 }
 
 
+
 class StanfordThread extends AsyncTask<Void, Void, Void>
 {
 
@@ -1401,20 +1595,20 @@ class StanfordThread extends AsyncTask<Void, Void, Void>
     @Override
     protected Void doInBackground(Void... voids) {
         MaxentTagger tagger = null;
+       //
         try {
             tagger = new MaxentTagger(
                     "taggers/left3words-wsj-0-18.tagger");
-        } catch (IOException e) {
-            Log.e("taggger", e + "");
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            Log.e("clas", "not found");
-            e.printStackTrace();
+        }
+        catch(Exception e)
+        {
+            Log.e("some exception","some");
         }
         mt.maxentTagger(tagger);
         return null;
     }
 }
+
 
 
 class FareCalculator extends AsyncTask<String[], Void, String>
@@ -1734,6 +1928,51 @@ class FailService extends AsyncTask<String, Void, String>
         } catch (IOException e1) {
             e1.printStackTrace();
         }
+
+        return null;
+    }
+}
+
+class TextRajor extends AsyncTask<String, Void, Void>
+{
+
+
+
+
+    public interface TextRajorInterface {
+       void taggedString(String output);
+    }
+    public TextRajorInterface textRajorInterface = null;
+
+    public TextRajor(TextRajorInterface textRajorInterface) {
+        this.textRajorInterface = textRajorInterface;
+    }
+    @Override
+    protected Void doInBackground(String... params) {
+        String toParse = params[0];
+        String finalWord = null;
+        TextRazor client = new TextRazor("7f542aa2a6a28b70ec49b57d2991277d938985c9a12ab69d7b1a160b");
+
+        client.addExtractor("words");
+        client.addExtractor("entities");
+
+        AnalyzedText response = null;
+        try {
+            response = client.analyze(toParse);
+        } catch (NetworkException e) {
+            e.printStackTrace();
+        } catch (AnalysisException e) {
+            e.printStackTrace();
+        }
+
+        for (Sentence sentence : response.getResponse().getSentences()) {
+            for (Word word : sentence.getWords()) {
+                finalWord += word + "/" + word.getPartOfSpeech();
+                Log.e("pos", word.getPartOfSpeech());
+            }
+        }
+        Log.e("fw",finalWord);
+        textRajorInterface.taggedString(finalWord);
 
         return null;
     }
