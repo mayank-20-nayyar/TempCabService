@@ -37,13 +37,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.location.Location;
 import android.graphics.Color;
-/*
+
 import com.amazonaws.auth.CognitoCachingCredentialsProvider;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferListener;
 import com.amazonaws.mobileconnectors.s3.transferutility.TransferObserver;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferState;
 import com.amazonaws.mobileconnectors.s3.transferutility.TransferUtility;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3Client;*/
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -59,13 +62,13 @@ import com.textrazor.NetworkException;
 import com.textrazor.annotations.AnalyzedText;
 import com.textrazor.annotations.Entity;
 import com.textrazor.annotations.Sentence;
-*/
+*//*
 import com.textrazor.AnalysisException;
 import com.textrazor.NetworkException;
 import com.textrazor.TextRazor;
 import com.textrazor.annotations.AnalyzedText;
 import com.textrazor.annotations.Sentence;
-import com.textrazor.annotations.Word;
+import com.textrazor.annotations.Word;*/
 import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
 import com.wdullaer.materialdatetimepicker.time.TimePickerDialog;
 
@@ -124,7 +127,7 @@ import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 */
 
-public class MainActivity extends AppCompatActivity implements StanfordThread.MaxentTaggerAsync, TextRajor.TextRajorInterface,DriverAndVehicle.DVResult, CreateTrip.TripResult ,FareCalculator.FareResult, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
+public class MainActivity extends AppCompatActivity implements AmazonThread.AmazonInterface, StanfordThread.MaxentTaggerAsync ,DriverAndVehicle.DVResult, CreateTrip.TripResult ,FareCalculator.FareResult, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, Network.TranferResult, DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
 
 
 
@@ -185,9 +188,9 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
     private GoogleApiClient mGoogleApiClient;
     ImageButton speakButton;
     MaxentTagger tagger = null;
-/*
+
     AmazonS3Client s3;
-    TransferUtility transferUtility;*/
+    TransferUtility transferUtility1;
 
     public File file;
     public File file2;
@@ -222,6 +225,7 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
         new StanfordThread(this).execute();
         Log.e("done with tagging", "yo");
 
+        new AmazonThread(this, getApplicationContext()).execute();
 
         if (checkPlayServices()) {
             buildGoogleApiClient();
@@ -841,8 +845,6 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
             sendJson(tempDropLocation, "NO","NO");
             sendJson(tempPickUpLocation, "NO","NO");
             sendBotMessage("We are verifying your drop and pick up location. Thanks  for your patience");
-            /*credentialsProvider();
-            setTransferUtility();*/
 
 
             file = new File(Environment.getExternalStorageDirectory() + File.separator + "test.txt");
@@ -851,32 +853,30 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            byte[] data1={1,1,0,0};
+            String data1= "this is nice";
             if(file.exists())
             {
-                OutputStream fo = null;
-                try {
-                    fo = new FileOutputStream(file);
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
+                Log.e("fil already","exists");
+                /*try {
+                    OutputStreamWriter outputStreamWriter = new OutputStreamWriter(getApplicationContext().openFileOutput("test.txt", Context.MODE_PRIVATE));
+                    outputStreamWriter.write(data1);
+                    outputStreamWriter.close();
                 }
-                try {
-                    fo.write(data1);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                try {
-                    fo.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                //upLoadToFile();
+                catch (IOException e) {
+                    Log.e("Exception", "File write failed: " + e.toString());
+                }*/
+                upLoadToFile();
             }
 
             file2 = new File(Environment.getExternalStorageDirectory() + File.separator + "test2.txt");
             try {
                 file2.createNewFile();
+                if(file2.exists()) {
+                    Log.e("created","file2");
+                    downLoadFile();
+                }
             } catch (IOException e) {
+                Log.e("io t2",e + "");
                 e.printStackTrace();
             }
 
@@ -1362,49 +1362,76 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
         vehiclePlateNum = output;
     }
 
-/*
-    public void credentialsProvider(){
-
-        }
-
-    public void setAmazonS3Client(CognitoCachingCredentialsProvider credentialsProvider){
-        CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
-                getApplicationContext(),
-                "us-west-2:c174953c-21c7-400e-95b6-b9c5737a3657",
-                Regions.US_WEST_2
-        );
-
-        setAmazonS3Client(credentialsProvider);
-
-
-        s3 = new AmazonS3Client(credentialsProvider);
-        s3.setRegion(Region.getRegion(Regions.US_WEST_2));
-
-    }
-    public void setTransferUtility(){
-
-        transferUtility = new TransferUtility(s3, getApplicationContext());
-    }
-
     public void upLoadToFile(){
-        TransferObserver observer = transferUtility.upload(
-                "vihikbot",     *//* The bucket to upload to *//*
-                 "user_chat",    *//* The key for the uploaded object *//*
-                 file        *//* The file where the data to upload exists *//*
+
+        Log.e("upload to file","here");
+
+        TransferObserver observer = transferUtility1.upload(
+                "vihikbot",     //* The bucket to upload to *//*
+                "user_chat",    //* The key for the uploaded object *//*
+                file      //* The file where the data to upload exists *//*
         );
+        observer.setTransferListener(new TransferListener() {
+            @Override
+            public void onStateChanged(int id, TransferState state) {
+                Log.e("on state changed","State changed to : "+state.toString());
+            }
+
+            @Override
+            public void onProgressChanged(int id, long bytesCurrent, long bytesTotal) {
+
+                //  transferPercentage = (float)bytesCurrent/(float)bytesTotal;
+                if(bytesCurrent == bytesTotal)
+                {
+                    //    transferComplete = true;
+                    Log.e("uploaded", "successfully");
+                }
+            }
+
+            @Override
+            public void onError(int id, Exception ex) {
+                Log.e("here","Upload Unsuccessful due to `"+ex.toString());
+            }
+        });
+
         Log.e("uploaded", "the file");
+
+
+        //new UploadAmazon(transferUtility).execute(file);
     }
     public void downLoadFile(){
-        TransferObserver observer = transferUtility.upload(
-                "vihikbot",     *//* The bucket to upload to *//*
-                "user_chat",    *//* The key for the uploaded object *//*
-                file2        *//* The file where the data to upload exists *//*
+
+
+        TransferObserver observer = transferUtility1.download(
+                "vihikbot",     //* The bucket to upload to *//*
+                "user_chat",    //* The key for the uploaded object *//*
+                file2       //* The file where the data to upload exists *//*
         );
         Log.e("downloaded", "the file");
+        observer.setTransferListener(new TransferListener(){
+
+            @Override
+            public void onStateChanged(int id, TransferState state) {
+                Log.e("on state download","change");
+            }
+
+            @Override
+            public void onProgressChanged(int id, long bytesCurrent, long bytesTotal) {
+                int percentage = (int) (bytesCurrent/bytesTotal * 100);
+                Log.e("the percent download", percentage + "");
+            }
+
+            @Override
+            public void onError(int id, Exception ex) {
+                Log.e("some error", "while download");
+            }
+
+        });
 
         String ret = "";
 
         try {
+            Log.e("reading from","downloaded file");
             InputStream inputStream = getApplicationContext().openFileInput("test2.txt");
 
             if ( inputStream != null ) {
@@ -1427,12 +1454,22 @@ public class MainActivity extends AppCompatActivity implements StanfordThread.Ma
         } catch (IOException e) {
             Log.e("login activity", "Can not read file: " + e.toString());
         }
-    }*/
+
+     //   new DownLoadAmazon(getApplicationContext(), transferUtility1).execute(file2);
+    }
+/*
     @Override
     public void taggedString(String output)
     {
        // rajorTaggedString = output;
         Log.e("please","w");
+    }
+*/
+
+    @Override
+    public void amazonMethods(TransferUtility transferUtility, AmazonS3Client amazonS3) {
+        transferUtility1 = transferUtility;
+        s3 = amazonS3;
     }
 }
 
@@ -1932,7 +1969,7 @@ class FailService extends AsyncTask<String, Void, String>
         return null;
     }
 }
-
+/*
 class TextRajor extends AsyncTask<String, Void, Void>
 {
 
@@ -1973,6 +2010,153 @@ class TextRajor extends AsyncTask<String, Void, Void>
         }
         Log.e("fw",finalWord);
         textRajorInterface.taggedString(finalWord);
+
+        return null;
+    }
+}*/
+
+class AmazonThread extends AsyncTask<Void, Void, Void>
+{
+    public interface AmazonInterface {
+
+        void amazonMethods(TransferUtility transferUtility, AmazonS3Client amazonS3);
+
+    }
+    AmazonInterface amazonInterface = null;
+    Context context;
+    public AmazonThread(AmazonInterface amazonInterface, Context context)
+    {
+        this.amazonInterface = amazonInterface;
+        this.context = context;
+    }
+
+
+
+
+    @Override
+    protected Void doInBackground(Void... voids) {
+
+
+        AmazonS3Client s3;
+        TransferUtility transferUtility;
+        Log.e("creating connection","doing");
+        try {
+            CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
+                    context,
+                    "us-west-2:c174953c-21c7-400e-95b6-b9c5737a3657",
+                    Regions.US_WEST_2
+            );
+
+            Log.e("done with connection","done");
+            s3 = new AmazonS3Client(credentialsProvider);
+            s3.setRegion(Region.getRegion(Regions.US_WEST_2));
+            transferUtility = new TransferUtility(s3, context);
+            amazonInterface.amazonMethods(transferUtility, s3);
+
+        }
+        catch(Exception e)
+        {
+            Log.e("upload exception",e + "");
+        }
+        return null;
+
+
+    }
+}
+
+class UploadAmazon extends AsyncTask<File, Void, Void>
+{
+    TransferUtility transferUtility = null;
+    public UploadAmazon(TransferUtility transferUtility)
+    {
+        this.transferUtility = transferUtility;
+    }
+
+    @Override
+    protected Void doInBackground(File... files) {
+        File uploadFile = files[0];
+        Log.e("before uploading","this");
+        TransferObserver observer = transferUtility.upload(
+                "vihikbot",     //* The bucket to upload to *//*
+                "user_chat",    //* The key for the uploaded object *//*
+                uploadFile       //* The file where the data to upload exists *//*
+        );
+        observer.setTransferListener(new TransferListener() {
+            @Override
+            public void onStateChanged(int id, TransferState state) {
+            Log.e("on state changed","State changed to : "+state.toString());
+            }
+
+            @Override
+            public void onProgressChanged(int id, long bytesCurrent, long bytesTotal) {
+
+                //  transferPercentage = (float)bytesCurrent/(float)bytesTotal;
+                if(bytesCurrent == bytesTotal)
+                {
+                    //    transferComplete = true;
+                    Log.e("uploaded", "successfully");
+                }
+            }
+
+            @Override
+            public void onError(int id, Exception ex) {
+                Log.e("here","Upload Unsuccessful due to `"+ex.toString());
+            }
+        });
+
+        Log.e("uploaded", "the file");
+
+        return null;
+    }
+}
+
+
+class DownLoadAmazon extends AsyncTask<File, Void, Void>
+{
+    Context context;
+    TransferUtility transferUtility = null;
+    public DownLoadAmazon(Context context,TransferUtility transferUtility)
+    {
+        this.transferUtility = transferUtility;
+        this.context = context;
+    }
+
+    @Override
+    protected Void doInBackground(File... files) {
+        File downloadedFile = files[0];
+
+        TransferObserver observer = transferUtility.upload(
+                "vihikbot",     //* The bucket to upload to *//*
+                "user_chat",    //* The key for the uploaded object *//*
+                downloadedFile        //* The file where the data to upload exists *//*
+        );
+        Log.e("downloaded", "the file");
+
+        String ret = "";
+
+        try {
+            InputStream inputStream = context.openFileInput("test2.txt");
+
+            if ( inputStream != null ) {
+                InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+                String receiveString = "";
+                StringBuilder stringBuilder = new StringBuilder();
+
+                while ( (receiveString = bufferedReader.readLine()) != null ) {
+                    stringBuilder.append(receiveString);
+                }
+
+                inputStream.close();
+                ret = stringBuilder.toString();
+                Log.e("the read string",ret);
+            }
+        }
+        catch (FileNotFoundException e) {
+            Log.e("login activity", "File not found: " + e.toString());
+        } catch (IOException e) {
+            Log.e("login activity", "Can not read file: " + e.toString());
+        }
 
         return null;
     }
