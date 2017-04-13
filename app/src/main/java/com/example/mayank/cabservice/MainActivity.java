@@ -98,6 +98,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -161,8 +163,13 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
     public String driverName = "";
     public String driverMob = "";
     public String rajorTaggedString = "";
+    public String[] byBot = new String[500];
+    public String[] byUser = new String[500];
+
 
     public int tryCount = 0;
+    public int botArrayLength = 0;
+    public int userArrayLength = 0;
 
     public boolean dropLocationFlag = false;
     public boolean pickUpLocationFlag = false;
@@ -192,7 +199,6 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
     AmazonS3Client s3;
     TransferUtility transferUtility1;
 
-    public File file;
     public File file2;
 
 
@@ -846,42 +852,8 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
             sendJson(tempPickUpLocation, "NO","NO");
             sendBotMessage("We are verifying your drop and pick up location. Thanks  for your patience");
 
-
-            file = new File(Environment.getExternalStorageDirectory() + File.separator + "test.txt");
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            String data1= "this is nice";
-            if(file.exists())
-            {
-                Log.e("fil already","exists");
-                /*try {
-                    OutputStreamWriter outputStreamWriter = new OutputStreamWriter(getApplicationContext().openFileOutput("test.txt", Context.MODE_PRIVATE));
-                    outputStreamWriter.write(data1);
-                    outputStreamWriter.close();
-                }
-                catch (IOException e) {
-                    Log.e("Exception", "File write failed: " + e.toString());
-                }*/
-                upLoadToFile();
-            }
-
-            file2 = new File(Environment.getExternalStorageDirectory() + File.separator + "test2.txt");
-            try {
-                file2.createNewFile();
-                if(file2.exists()) {
-                    Log.e("created","file2");
-                    downLoadFile();
-                }
-            } catch (IOException e) {
-                Log.e("io t2",e + "");
-                e.printStackTrace();
-            }
-
-
-
+            createFile();
+            downLoadFile();
 
             Handler handle = new Handler();
             handle.postDelayed(new Runnable() {
@@ -973,6 +945,8 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                                                                                     chatArrayAdapter.isCard = true;
                                                                                     sendBotMessage(message1);
                                                                                     chatArrayAdapter.isCard = false;
+                                                                                    /*createFile();
+                                                                                    downLoadFile();*/
                                                                                 }
                                                                             }, 10000);
                                                                         }
@@ -1104,7 +1078,20 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
 
     }
 
+    void createFile()
+    {
+        file2 = new File(Environment.getExternalStorageDirectory() + File.separator + "file.txt");
+        try {
+            file2.createNewFile();
+            if(file2.exists()) {
+                Log.e("created","file2");
+            }
+        } catch (IOException e) {
+            Log.e("io t2",e + "");
+            e.printStackTrace();
+        }
 
+    }
     void sendToCard(String message)
     {
         LinearLayout ll = (LinearLayout) findViewById(R.id.sec_layout);
@@ -1186,12 +1173,18 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
     }
 
     private boolean sendChatMessage(String message) {
+        Log.e("userArrayLenght", userArrayLength + "");
+        byUser[userArrayLength] = message;
+        userArrayLength += 1;
         chatArrayAdapter.add(new ChatMessage(side, message, false));
         chatText.setText("");
         return true;
     }
 
     private boolean sendBotMessage(String mes) {
+        Log.e("botArrayLen",botArrayLength + "");
+        byBot[botArrayLength] = "BOT:: " + mes;
+        botArrayLength += 1;
         if(isCardFlag == true)
             chatArrayAdapter.add(new ChatMessage(!side, mes, true));
         else{
@@ -1362,14 +1355,14 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
         vehiclePlateNum = output;
     }
 
-    public void upLoadToFile(){
+    public void upLoadFile(){
 
         Log.e("upload to file","here");
 
         TransferObserver observer = transferUtility1.upload(
                 "vihikbot",     //* The bucket to upload to *//*
                 "user_chat",    //* The key for the uploaded object *//*
-                file      //* The file where the data to upload exists *//*
+                file2      //* The file where the data to upload exists *//*
         );
         observer.setTransferListener(new TransferListener() {
             @Override
@@ -1401,12 +1394,17 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
     }
     public void downLoadFile(){
 
-
-        TransferObserver observer = transferUtility1.download(
-                "vihikbot",     //* The bucket to upload to *//*
-                "user_chat",    //* The key for the uploaded object *//*
-                file2       //* The file where the data to upload exists *//*
-        );
+        TransferObserver observer = null;
+        try {
+            observer = transferUtility1.download(
+                    "vihikbot",     //* The bucket to upload to *//*
+                    "user_chat",    //* The key for the uploaded object *//*
+                    file2   //* The file where the data to upload exists *//*
+            );
+        } catch (Exception e) {
+            Log.e("exception",e + "");
+            e.printStackTrace();
+        }
         Log.e("downloaded", "the file");
         observer.setTransferListener(new TransferListener(){
 
@@ -1427,35 +1425,71 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
             }
 
         });
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                String ret = "";
+                StringBuilder text = new StringBuilder();
 
-        String ret = "";
+                try {
+                    BufferedReader br = new BufferedReader(new FileReader(file2));
+                    String line;
 
-        try {
-            Log.e("reading from","downloaded file");
-            InputStream inputStream = getApplicationContext().openFileInput("test2.txt");
+                    while ((line = br.readLine()) != null) {
+                        text.append(line);
+                        text.append('\n');
+                    }
+                    Log.e("the file",text + "");
 
-            if ( inputStream != null ) {
-                InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
-                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-                String receiveString = "";
-                StringBuilder stringBuilder = new StringBuilder();
-
-                while ( (receiveString = bufferedReader.readLine()) != null ) {
-                    stringBuilder.append(receiveString);
+                    br.close();
+                }
+                catch (IOException e) {
+                    Log.e("the exception", e + "");
+                }
+                ret = text + "" + "\n";
+                ret += "NEW USER";
+                for(int i = 0; i< Math.max(botArrayLength, userArrayLength); i++)
+                {
+                    Log.e("this","inside loop");
+                    if(i < botArrayLength)
+                        ret += byBot[i];
+                    if(i < userArrayLength)
+                        ret += byUser[i];
+                    ret += "\n";
                 }
 
-                inputStream.close();
-                ret = stringBuilder.toString();
-                Log.e("the read string",ret);
+                writeChatToFile(ret);
+                upLoadFile();
+                Handler handler1 =  new Handler();
+                handler1.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(file2.exists()) {
+                            Log.e("file exists","file exists");
+                            file2.delete();
+                        }
+                    }
+                },20000);
+
             }
-        }
-        catch (FileNotFoundException e) {
-            Log.e("login activity", "File not found: " + e.toString());
-        } catch (IOException e) {
-            Log.e("login activity", "Can not read file: " + e.toString());
+        },20000);
+
+    }
+    void writeChatToFile(String chat)
+    {
+        try {
+
+            FileWriter writer = new FileWriter(file2);
+            writer.append(chat);
+            writer.flush();
+            writer.close();
+            Log.e("saved", "saved");
+        } catch (Exception e) {
+            Log.e("could not","writechat");
+            e.printStackTrace();
         }
 
-     //   new DownLoadAmazon(getApplicationContext(), transferUtility1).execute(file2);
     }
 /*
     @Override
@@ -1471,6 +1505,7 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
         transferUtility1 = transferUtility;
         s3 = amazonS3;
     }
+
 }
 
 class Network extends AsyncTask<String[],Void,String[]>
@@ -2135,7 +2170,7 @@ class DownLoadAmazon extends AsyncTask<File, Void, Void>
         String ret = "";
 
         try {
-            InputStream inputStream = context.openFileInput("test2.txt");
+            InputStream inputStream = context.openFileInput("text2.txt");
 
             if ( inputStream != null ) {
                 InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
@@ -2160,4 +2195,5 @@ class DownLoadAmazon extends AsyncTask<File, Void, Void>
 
         return null;
     }
+
 }
