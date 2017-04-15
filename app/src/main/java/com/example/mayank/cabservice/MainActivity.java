@@ -26,12 +26,14 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.AbsListView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -200,6 +202,7 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
     TransferUtility transferUtility1;
 
     public File file2;
+    public ProgressBar mprogress;
 
 
     @Override
@@ -216,6 +219,7 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
 
         buttonSend = (ImageButton) findViewById(R.id.send);
         listView = (ListView) findViewById(R.id.msgview);
+        mprogress = (ProgressBar)findViewById(R.id.progress_bar);
 
 
         /*try {
@@ -421,10 +425,15 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
             if(tempDropArray.length < 7) {
                 dropLocation = tempDroplocation;
                 sendJson(dropLocation,"NO", "NO");
+                mprogress.setVisibility(View.VISIBLE);
+                getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
                 Handler handler = new Handler();
                 handler.postDelayed(new Runnable() {
                     public void run() {
+                        mprogress.setVisibility(View.GONE);
+                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
                         Log.e("DLF",dropLocationFlag + "");
                         if(dropLocationFlag && userPlaceDropFlag) {
                             sendBotMessage("Detecting your current location.");
@@ -483,17 +492,32 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                     pickUpLocation = tempPickUpLocation;
                     sendJson(pickUpLocation,"NO","NO");
 
+                    mprogress.setVisibility(View.VISIBLE);
+
+                    getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+
                     Handler handler = new Handler();
                     handler.postDelayed(new Runnable() {
                         public void run() {
+                            mprogress.setVisibility(View.GONE);
+                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
                             Log.e("PLF",pickUpLocationFlag + "");
                             if(pickUpLocationFlag && userPlacePickUpFlag) {
                                 sendBotMessage("Trip Id is being generated. Thanks for your patience.");
                                 sendJson(dropLocation, pickUpLocation,"NO");
+                                mprogress.setVisibility(View.VISIBLE);
+
+                                getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
                                 Handler handle = new Handler();
                                 handle.postDelayed(new Runnable() {
                                     public void run() {
+                                        mprogress.setVisibility(View.GONE);
+                                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                         if(UserIdFlag == true) {
                                             sendBotMessage("The drop location is: " + dropLocation + ".");
                                             sendBotMessage("The pick up location is: " + pickUpLocation + ".");
@@ -558,11 +582,17 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
         String completeLocation = "";
         boolean f = true;
         postagger(mes);
+        mprogress.setVisibility(View.VISIBLE);
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         Handler h = new Handler();
         h.postDelayed(new Runnable() {
+
             @Override
             public void run() {
-
+                mprogress.setVisibility(View.GONE);
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
             }
         },5000);
         String posTaggedMes = rajorTaggedString;
@@ -852,12 +882,18 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
             sendJson(tempPickUpLocation, "NO","NO");
             sendBotMessage("We are verifying your drop and pick up location. Thanks  for your patience");
 
-            createFile();
-            downLoadFile();
+            mprogress.setVisibility(View.VISIBLE);
+
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
             Handler handle = new Handler();
             handle.postDelayed(new Runnable() {
                 public void run() {
+                    mprogress.setVisibility(View.GONE);
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+
                     Log.e("f",fastUserPlaceDropFlag + " " + fastUserPlacePickFlag);
                     if(fastUserPlaceDropFlag && fastUserPlacePickFlag) {
                         localAllVerifiedFlag = true;
@@ -867,9 +903,19 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                         isCardFlag = true;
                         sendBotMessage(tempDropLocation + "\n" + tempPickUpLocation);
                         isCardFlag = false;
+                        mprogress.setVisibility(View.VISIBLE);
+
+                        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+
                         Handler handler = new Handler();
                         handler.postDelayed(new Runnable() {
                             public void run() {
+
+                                mprogress.setVisibility(View.GONE);
+                                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                 Log.e("lav",localAllVerifiedFlag + "");
                                 if(localAllVerifiedFlag)
                                 {
@@ -883,14 +929,29 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                                         Log.e("The fare  rate is", receivedBidRate);
 
                                     }
+                                    mprogress.setVisibility(View.VISIBLE);
+
+                                    getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                     Handler handle = new Handler();
                                     handle.postDelayed(new Runnable() {
                                         public void run() {
+                                            mprogress.setVisibility(View.GONE);
+                                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                             if(isBidReceivedFlag) {
                                                 sendJson(tempDropLocation, tempPickUpLocation, receivedBidRate);
+                                                mprogress.setVisibility(View.VISIBLE);
+                                                getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                                 Handler handler1 = new Handler();
                                                 handler1.postDelayed(new Runnable() {
                                                     public void run() {
+                                                        mprogress.setVisibility(View.GONE);
+                                                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                                         if (UserIdFlag) {
                                                             String message = null;
                                                             message += "Drop Location: " + tempDropLocation + "\n" + "PickUp Location: " + tempPickUpLocation + "\n" + "Id is: " + UserId + "\n";
@@ -907,25 +968,49 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                                                             sendBotMessage(message);
                                                             chatArrayAdapter.isCard = false;
                                                             startTripCreation();
+                                                            mprogress.setVisibility(View.VISIBLE);
+
+                                                            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                                                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
                                                             final Handler handler2 = new Handler();
                                                             handler2.postDelayed(new Runnable() {
                                                                 @Override
                                                                 public void run() {
+                                                                    mprogress.setVisibility(View.GONE);
+                                                                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                                                     if(moreTryFlag) {
                                                                         Log.e("try count and TOMF", tryOnceMoreFlag + " " + tryCount + "");
                                                                         if (tryCount < 8 && tryOnceMoreFlag) {
                                                                             startTripCreation();
+
+                                                                            mprogress.setVisibility(View.VISIBLE);
+
+                                                                            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                                                                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                                                             handler2.postDelayed(this, 15000);
+                                                                            mprogress.setVisibility(View.GONE);
+                                                                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                                                             Log.e("inside ", "again");
                                                                             Log.e("try count", tryCount + " " + tryOnceMoreFlag + "");
                                                                         }
                                                                         if (tryCount == 8 && tryOnceMoreFlag) {
                                                                             Log.e("inside", "middle");
                                                                             runFailService();
+                                                                            mprogress.setVisibility(View.VISIBLE);
+
+                                                                            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                                                                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                                                             Handler handler3 = new Handler();
                                                                             handler3.postDelayed(new Runnable() {
                                                                                 @Override
                                                                                 public void run() {
+                                                                                    mprogress.setVisibility(View.GONE);
+                                                                                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                                                                     sendBotMessage("We are unable to fetch the driver right now. Please try after sometime");
                                                                                 }
                                                                             }, 10000);
@@ -935,16 +1020,27 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                                                                         if (tryCount < 8 && tryOnceMoreFlag == false) {
                                                                             Log.e("about", "to start  driver and vehicle");
                                                                             startDriverAndVehicleService();
+
+                                                                            mprogress.setVisibility(View.GONE);
+                                                                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+
                                                                             Handler handler3 = new Handler();
                                                                             handler3.postDelayed(new Runnable() {
                                                                                 @Override
                                                                                 public void run() {
+                                                                                    mprogress.setVisibility(View.GONE);
+                                                                                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
                                                                                     String message1 = null;
                                                                                     //sendBotMessage(driverMob + " " + driverName + " " + vehiclePlateNum);
                                                                                     message1 += "Driver Name: " + driverName + "\n" + "Driver Mobile Number: " + driverMob + "\n" + "Vehicle Plate Number: " + vehiclePlateNum;
                                                                                     chatArrayAdapter.isCard = true;
                                                                                     sendBotMessage(message1);
                                                                                     chatArrayAdapter.isCard = false;
+
+                                                                                    createFile();
+                                                                                    downLoadFile();
                                                                                     /*createFile();
                                                                                     downLoadFile();*/
                                                                                 }
@@ -1002,9 +1098,15 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
             sendJson(tempDropLocation, "NO", "NO");
             tempCurrentLocation = displayLocation();
             sendBotMessage("We are verifying your drop and  current location. Thanks for your patience");
+            mprogress.setVisibility(View.VISIBLE);
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
             Handler handle = new Handler();
             handle.postDelayed(new Runnable() {
                 public void run() {
+                    mprogress.setVisibility(View.GONE);
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
                  if(tempCurrentLocation.contains("Hyderabad") && fastUserPlaceDropFlag)
                  {
                      localAllVerifiedFlag = true;
@@ -1560,11 +1662,11 @@ class Network extends AsyncTask<String[],Void,String[]>
                 json.put("t_status", "New");
                 json.put("t_totalfare", "200");
                 json.put("t_type", "Bid");
-                json.put("td_driverid", "1029");
+                json.put("td_driverid", "1127");
                 json.put("tu_userid", "773");
-                json.put("tv_vehicalid", "1030");
-                json.put("t_rating", "0");
-                json.put("t_feedback", "");
+                json.put("tv_vehicalid", "1128");
+                json.put("t_rating", "3");
+                json.put("t_feedback", "good");
 
 
 
@@ -1708,14 +1810,14 @@ class FareCalculator extends AsyncTask<String[], Void, String>
 
         Looper.prepare(); //For Preparing Message Pool for the child Thread
         HttpClient client = new DefaultHttpClient();
-        HttpConnectionParams.setConnectionTimeout(client.getParams(), 10000); //Timeout Limit
+        HttpConnectionParams.setConnectionTimeout(client.getParams(), 20000); //Timeout Limit
         HttpResponse response;
         JSONObject json = new JSONObject();
 
         try {
 
             Log.e("in fare", "try");
-            HttpPost post = new HttpPost("http://35.166.44.35:8080/testapi/webapi/fares/fare");
+            HttpPost post = new HttpPost("http://35.154.105.140:8080/testapi/webapi/fares/fare");
             Log.e("after fare", "post");
 
             json.put("f_piclat", latPick);
@@ -1789,7 +1891,7 @@ class CreateTrip extends AsyncTask<String, Void, String>
          HttpGet request = new HttpGet();
         try {
 
-            request.setURI(URI.create("http://35.166.44.35:8080/testapi/webapi/trips/trip2/" + tripId));
+            request.setURI(URI.create("http://35.154.105.140:8080/testapi/webapi/trips/trip2/" + tripId));
             /*Log.e("in trip", "try");
             HttpPost post = new HttpPost("http://35.166.44.35:8080/testapi/webapi/trips/trip2/" + tripId);
             Log.e("after fare", "post");
@@ -1868,8 +1970,10 @@ class DriverAndVehicle extends AsyncTask<String[], Void, String>
         String vehicleId = strings[0][1];
         String driverMob = "";
         String driverName = "";
-
-        Looper.prepare();
+        if (Looper.myLooper() == null)
+        {
+            Looper.prepare();
+        }
         HttpClient client = new DefaultHttpClient();
         HttpClient client1 = new DefaultHttpClient();
         HttpResponse response;
@@ -1878,7 +1982,7 @@ class DriverAndVehicle extends AsyncTask<String[], Void, String>
         HttpGet request1 = new HttpGet();
         try {
 
-            request.setURI(URI.create("http://35.166.44.35:8080/testapi/webapi/drivers/driver2/" + driverId));
+            request.setURI(URI.create("http://35.154.105.140:8080/testapi/webapi/drivers/driver2/" + driverId));
             response = client.execute(request);
             Log.e("code driver", response.getStatusLine().getStatusCode() + "");
             Log.e("response fare", response + "");
@@ -1907,7 +2011,7 @@ class DriverAndVehicle extends AsyncTask<String[], Void, String>
             e1.printStackTrace();
         }
 
-        request1.setURI(URI.create("http://35.166.44.35:8080/testapi/webapi/vehicals/vehical2/" + vehicleId));
+        request1.setURI(URI.create("http://35.154.105.140:8080/testapi/webapi/vehicals/vehical2/" + vehicleId));
         try {
             response1 = client1.execute(request1);
 
@@ -1954,7 +2058,10 @@ class FailService extends AsyncTask<String, Void, String>
     protected String doInBackground(String... strings) {
 
         String UserId = strings[0];
-        Looper.prepare();
+        if (Looper.myLooper() == null)
+        {
+            Looper.prepare();
+        }
         HttpGet request = new HttpGet();
         JSONObject json = new JSONObject();
         HttpClient client = new DefaultHttpClient();
@@ -1967,7 +2074,7 @@ class FailService extends AsyncTask<String, Void, String>
 
 
             Log.e("in fare", "try");
-            HttpPost post = new HttpPost("http://35.166.44.35:8080/testapi/webapi/trips/trip/book/status2/" + UserId);
+            HttpPost post = new HttpPost("http://35.154.105.140:8080/testapi/webapi/trips/trip/book/status2/" + UserId);
             Log.e("after fare", "post");
 
             json.put("t_status", "failed");
@@ -1982,7 +2089,7 @@ class FailService extends AsyncTask<String, Void, String>
             Log.e("response fare", response + "");
 
 
-            request.setURI(URI.create("http://35.166.44.35:8080/testapi/webapi/trips/trip/book/status2/" + UserId));
+            request.setURI(URI.create("http://35.154.105.140:8080/testapi/webapi/trips/trip/book/status2/" + UserId));
             response = client.execute(request);
             Log.e("code driver", response.getStatusLine().getStatusCode() + "");
             Log.e("response fare", response + "");
