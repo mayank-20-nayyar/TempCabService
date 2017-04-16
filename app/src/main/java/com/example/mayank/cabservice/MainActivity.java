@@ -173,6 +173,9 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
     public int botArrayLength = 0;
     public int userArrayLength = 0;
 
+    public double latitude;
+    public double longitude;
+
     public boolean dropLocationFlag = false;
     public boolean pickUpLocationFlag = false;
     public boolean UserIdFlag = false;
@@ -188,6 +191,7 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
     public boolean tryOnceMoreFlag = false;
     public boolean moreTryFlag = true;
     public boolean isCardFlag = false;
+    public boolean yesFlag = false;
 
 
     private final int REQ_CODE_SPEECH_INPUT = 100;
@@ -250,9 +254,10 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
         chatArrayAdapter = new ChatArrayAdapter(getApplicationContext(), R.layout.righht);
         listView.setAdapter(chatArrayAdapter);
 
-        sendBotMessage("I am Vihik Bot.");
+        sendBotMessage("Hi User, I am Vihik Bot.");
         sendBotMessage("In order to chat with drivers you \n will need to create a trip. \n I will help with trip creation.");
-        sendBotMessage("Please provide your drop location or choose the below options");
+        sendBotMessage("Please choose one of the below options");
+        sendBotMessage("You will be able to chat with drivers if you select Book option.");
         showButton("BOOK",3);
         showButton("FAST BID", 4);
 
@@ -354,8 +359,8 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                 .getLastLocation(mGoogleApiClient);
 
         if (mLastLocation != null) {
-            double latitude = mLastLocation.getLatitude();
-            double longitude = mLastLocation.getLongitude();
+            latitude = mLastLocation.getLatitude();
+            longitude = mLastLocation.getLongitude();
 
             Log.e("the location", latitude + " " + longitude + " " );
             currentAddress = convertToAddress(latitude, longitude);
@@ -463,17 +468,13 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
             String tempPickUpLocation;
             String[] tempPickUpArray;
             if(message.equals("Yes") || message.equals("yes") || message.equals("YES")) {
+                yesFlag = true;
                 tempPickUpLocation = currentLocation;
                 if(tempPickUpLocation.contains("Hyderabad")) {
                     pickUpLocation = tempPickUpLocation;
                     sendBotMessage("Trip Id is being generated. Thanks for your patience.");
-                    sendJson(dropLocation, pickUpLocation,"NO");
+                    bookFlow(dropLocation,pickUpLocation);
 
-                    sendBotMessage("The drop location is: " + dropLocation + ".");
-                    sendBotMessage("The pick up location is: " + pickUpLocation + ".");
-                    sendBotMessage("The Id is: " + UserId + ".");
-                    sendBotMessage("Thanks for booking through us.");
-                    sendBotMessage("Press 1 to make a new booking");
                     flag++;
                 }
                 else
@@ -484,10 +485,12 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
 
             }
             else {
+                LinearLayout ll = (LinearLayout)findViewById(R.id.sec_layout);
+                ll.removeAllViews();
                 tempPickUpLocation = extractLocation(message, flag);
                 tempPickUpArray = tempPickUpLocation.split("\\s");
 
-                if(tempPickUpArray.length < 7)
+                if(tempPickUpArray.length < 20)
                 {
                     pickUpLocation = tempPickUpLocation;
                     sendJson(pickUpLocation,"NO","NO");
@@ -506,33 +509,7 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                             Log.e("PLF",pickUpLocationFlag + "");
                             if(pickUpLocationFlag && userPlacePickUpFlag) {
                                 sendBotMessage("Trip Id is being generated. Thanks for your patience.");
-                                sendJson(dropLocation, pickUpLocation,"NO");
-                                mprogress.setVisibility(View.VISIBLE);
-
-                                getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-
-                                Handler handle = new Handler();
-                                handle.postDelayed(new Runnable() {
-                                    public void run() {
-                                        mprogress.setVisibility(View.GONE);
-                                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-
-                                        if(UserIdFlag == true) {
-                                            sendBotMessage("The drop location is: " + dropLocation + ".");
-                                            sendBotMessage("The pick up location is: " + pickUpLocation + ".");
-                                            sendBotMessage("The Id is: " + UserId + ".");
-                                            sendBotMessage("Thanks for booking through us.");
-                                            sendBotMessage("Press 1 to make a new booking");
-                                            flag++;
-                                        }
-                                        else
-                                        {
-                                            flag = 0;
-                                            sendBotMessage("Some technical issue. Please try again after sometime");
-                                        }
-                                    }
-                                }, 6000);
+                                bookFlow(dropLocation,pickUpLocation);
 
 
                             }
@@ -577,6 +554,152 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
 
     }
 
+    void bookFlow(final String dropLocation1, final String pickUpLocation1)
+    {
+        Log.e("here","boook flow");
+        runFareCalculator(dropLocation1, pickUpLocation1, "6");
+        mprogress.setVisibility(View.VISIBLE);
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+        Handler handle = new Handler();
+            handle.postDelayed(new Runnable() {
+                public void run() {
+                    mprogress.setVisibility(View.GONE);
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+                    Log.e("here","before is bid received");
+                    if (isBidReceivedFlag) {
+                        Log.e("here","after is bid received + received bidrate is" + receivedBidRate);
+                        sendJson(tempDropLocation, tempPickUpLocation, receivedBidRate);
+                        mprogress.setVisibility(View.VISIBLE);
+                        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+                        Log.e("here","after sendJson");
+                        Handler handler1 = new Handler();
+                        handler1.postDelayed(new Runnable() {
+                            public void run() {
+                                mprogress.setVisibility(View.GONE);
+                                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+                                Log.e("here","before user id flag");
+                                if (UserIdFlag) {
+                                    Log.e("here","after user id flag");
+                                    String message = "";
+                                    message += "Drop Location: " + dropLocation1 + "\n" + "PickUp Location: " + pickUpLocation1 + "\n" + "Id is: " + UserId + "\n";
+
+                                    isCardFlag = true;
+                                    sendBotMessage(message);
+                                    isCardFlag = false;
+                                    Log.e("here","before start trip creation");
+                                    startTripCreation();
+                                    Log.e("here","after trip creation");
+                                    mprogress.setVisibility(View.VISIBLE);
+
+                                    getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+                                    final Handler handler2 = new Handler();
+                                    handler2.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            mprogress.setVisibility(View.GONE);
+                                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+                                            if (moreTryFlag) {
+                                                Log.e("try count and TOMF", tryOnceMoreFlag + " " + tryCount + "");
+                                                if (tryCount < 8 && tryOnceMoreFlag) {
+                                                    startTripCreation();
+
+                                                    mprogress.setVisibility(View.VISIBLE);
+
+                                                    getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+                                                    handler2.postDelayed(this, 15000);
+                                                    mprogress.setVisibility(View.GONE);
+                                                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+                                                    Log.e("inside ", "again");
+                                                    Log.e("try count", tryCount + " " + tryOnceMoreFlag + "");
+                                                }
+                                                if (tryCount == 8 && tryOnceMoreFlag) {
+                                                    Log.e("inside", "middle");
+                                                    runFailService();
+                                                    mprogress.setVisibility(View.VISIBLE);
+
+                                                    getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                                                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+                                                    Handler handler3 = new Handler();
+                                                    handler3.postDelayed(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            mprogress.setVisibility(View.GONE);
+                                                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+                                                            sendBotMessage("We are unable to fetch the driver right now. Please try after sometime");
+                                                        }
+                                                    }, 10000);
+
+
+                                                }
+                                                if (tryCount < 8 && tryOnceMoreFlag == false) {
+                                                    Log.e("about", "to start  driver and vehicle");
+                                                    startDriverAndVehicleService();
+
+                                                    mprogress.setVisibility(View.GONE);
+                                                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+
+                                                    Handler handler3 = new Handler();
+                                                    handler3.postDelayed(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            mprogress.setVisibility(View.GONE);
+                                                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+                                                            String message1 = null;
+                                                            sendBotMessage("your trip is accepted by below driver.Please reach out to driver if needed.Contact support@vihik.com incase of any issues");
+                                                            message1 += "Driver Name: " + driverName + "\n" + "Driver Mobile Number: " + driverMob + "\n" + "Vehicle Plate Number: " + vehiclePlateNum;
+                                                            isCardFlag = true;
+                                                            sendBotMessage(message1);
+                                                            isCardFlag = false;
+
+                                                            createFile();
+                                                            downLoadFile();
+                                                                                    /*createFile();
+                                                                                    downLoadFile();*/
+                                                        }
+                                                    }, 10000);
+                                                }
+                                            } else
+                                                sendBotMessage("Unable to process further. Please try after some time");
+                                        }
+                                    }, 15000);
+
+                                } else {
+                                    sendBotMessage("Some technical issue. Please try after sometime");
+                                    UserIdFlag = false;
+                                    fastUserPlaceDropFlag = false;
+                                    fastUserPlacePickFlag = false;
+                                    localAllVerifiedFlag = false;
+
+                                }
+                            }
+                        }, 6000);
+                    } else {
+                        sendBotMessage("Some technical issue. Please try after sometime");
+                        UserIdFlag = false;
+                        fastUserPlaceDropFlag = false;
+                        fastUserPlacePickFlag = false;
+                        localAllVerifiedFlag = false;
+
+                    }
+
+                }
+            }, 5000);
+
+    }
+
     String extractLocation(String mes, int flag)
     {
         String completeLocation = "";
@@ -595,7 +718,7 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
             }
         },5000);
-        String posTaggedMes = rajorTaggedString;
+        String posTaggedMes = postagger(mes);
         String[] posArray;
         String[] innerArray;
         Log.e("tagged", posTaggedMes);
@@ -721,7 +844,12 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
 */
     void sendJson(final String dLocation, final String picLocation, String bid)
     {
-        String[] net = {dLocation,picLocation, bid};
+        String bidorBook = "";
+        if(fastBidBookFlag)
+            bidorBook = "Bid";
+        else
+            bidorBook = "Book";
+        String[] net = {dLocation,picLocation, bid, bidorBook};
         new Network(this).execute(net);
 
     }
@@ -783,10 +911,10 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
         BidorBook = book_or_bid;
         sendBotMessage("You have chosen " + book_or_bid + " option.\n You may follow the below template.");
         if(book_or_bid.contains("Fast Book"))
-            sendBotMessage("to Char Minar from Almond Bakery.");
+            sendBotMessage("Example: to Char Minar from Almond Bakery.");
         else
-            sendBotMessage("to Char Minar from Almond Bakery @ Rs. 10/km.");
-        sendBotMessage("If you want your current location as pick up then you may directly write your drop location");
+            sendBotMessage("Example: Bid a cab to Char Minar Hyderabad International Airport @ Rs. 10/km.");
+        //sendBotMessage("If you want your current location as pick up then you may directly write your drop location");
 
     }
 
@@ -900,9 +1028,7 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
 
 
                         Log.e("temp fast",tempFastMessage + localAllVerifiedFlag + fastBidBookFlag + localBidFlag);
-                        isCardFlag = true;
-                        sendBotMessage(tempDropLocation + "\n" + tempPickUpLocation);
-                        isCardFlag = false;
+
                         mprogress.setVisibility(View.VISIBLE);
 
                         getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
@@ -953,7 +1079,7 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                                                         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
                                                         if (UserIdFlag) {
-                                                            String message = null;
+                                                            String message = "";
                                                             message += "Drop Location: " + tempDropLocation + "\n" + "PickUp Location: " + tempPickUpLocation + "\n" + "Id is: " + UserId + "\n";
                                                             //sendBotMessage("The drop location is: " + tempDropLocation + ".");
                                                             //sendBotMessage("The pick up location is: " + tempPickUpLocation + ".");
@@ -964,9 +1090,9 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                                                             }
                                                             //sendBotMessage("Thanks for booking through us.");
                                                             //sendBotMessage("Press 1 to make a new booking");
-                                                            chatArrayAdapter.isCard = true;
+                                                            isCardFlag = true;
                                                             sendBotMessage(message);
-                                                            chatArrayAdapter.isCard = false;
+                                                            isCardFlag = false;
                                                             startTripCreation();
                                                             mprogress.setVisibility(View.VISIBLE);
 
@@ -1032,12 +1158,12 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
                                                                                     mprogress.setVisibility(View.GONE);
                                                                                     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
-                                                                                    String message1 = null;
-                                                                                    //sendBotMessage(driverMob + " " + driverName + " " + vehiclePlateNum);
+                                                                                    String message1 = "";
+                                                                                    sendBotMessage("your trip is accepted by below driver.Please reach out to driver if needed.Contact support@vihik.com incase of any issues");
                                                                                     message1 += "Driver Name: " + driverName + "\n" + "Driver Mobile Number: " + driverMob + "\n" + "Vehicle Plate Number: " + vehiclePlateNum;
-                                                                                    chatArrayAdapter.isCard = true;
+                                                                                    isCardFlag = true;
                                                                                     sendBotMessage(message1);
-                                                                                    chatArrayAdapter.isCard = false;
+                                                                                    isCardFlag = false;
 
                                                                                     createFile();
                                                                                     downLoadFile();
@@ -1238,6 +1364,10 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
 
     void runFareCalculator(String tD, String tP, String bidR){
         Log.e("it is in","runfarecalc");
+        if(yesFlag) {
+            bidLatitudePickUp = latitude + "";
+            bidLongitudePickUp = longitude + "";
+        }
         String[] bidData = {bidLatitudeDrop, bidLongitudeDrop, bidLatitudePickUp, bidLongitudePickUp, bidR};
         Log.e("runFareFunc",bidLatitudeDrop + " " + bidLongitudeDrop + " " + bidLatitudePickUp + " " + bidLongitudePickUp);
         new FareCalculator(this).execute(bidData);
@@ -1320,11 +1450,15 @@ public class MainActivity extends AppCompatActivity implements AmazonThread.Amaz
         Log.e("SS", placeFlag + "");
         if(!fastBidBookFlag) {
             if (status.equals("OK") && flag == 0) {
+                bidLatitudeDrop = latitude;
+                bidLongitudeDrop = longitude;
                 dropLocationFlag = true;
                 if (placeFlag == true)
                     userPlaceDropFlag = true;
             }
             if (status.equals("OK") && flag == 1) {
+                bidLatitudePickUp = latitude;
+                bidLongitudePickUp= longitude;
                 pickUpLocationFlag = true;
                 if (placeFlag == true)
                     userPlacePickUpFlag = true;
@@ -1629,8 +1763,15 @@ class Network extends AsyncTask<String[],Void,String[]>
         String dropLocation = params[0][0];
         String pickUpLocation = params[0][1];
         String totalBid = params[0][2];
+        String bidorBook = params[0][3];
+        String bidredius = "3";
         String latitude = "";
         String longitude = "";
+
+        if(bidorBook.equals("Book")) {
+            bidredius = "0";
+            totalBid = "0";
+        }
         if (!pickUpLocation.equals("NO")) {
 
             String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
@@ -1652,7 +1793,7 @@ class Network extends AsyncTask<String[],Void,String[]>
                 Log.e("after", "post");
 
                 json.put("t_bidamount", totalBid);
-                json.put("t_bidredius", "3");
+                json.put("t_bidredius", bidredius);
                 json.put("t_bookdatetime", currentDateTimeString);
                 json.put("t_picdatetime", "");
                 json.put("t_dropplace", dropLocation);
@@ -1661,7 +1802,7 @@ class Network extends AsyncTask<String[],Void,String[]>
                 json.put("t_picplace", pickUpLocation);
                 json.put("t_status", "New");
                 json.put("t_totalfare", "200");
-                json.put("t_type", "Bid");
+                json.put("t_type", bidorBook);
                 json.put("td_driverid", "1127");
                 json.put("tu_userid", "773");
                 json.put("tv_vehicalid", "1128");
